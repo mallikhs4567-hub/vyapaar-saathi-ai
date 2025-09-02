@@ -1,5 +1,6 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { BusinessTypeCard } from '@/components/BusinessTypeCard';
 
 const Index = () => {
   const { t } = useLanguage();
@@ -9,26 +10,20 @@ const Index = () => {
       <div className="absolute top-4 right-4">
         <LanguageSelector />
       </div>
-      <div className="text-center space-y-6">
-        <h1 className="text-4xl font-bold text-foreground">
-          {t('welcome')} {t('appName')}
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          {t('selectBusinessType')}
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 max-w-2xl">
-          <div className="p-6 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <h3 className="text-lg font-semibold">{t('barber')}</h3>
-          </div>
-          <div className="p-6 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <h3 className="text-lg font-semibold">{t('grocery')}</h3>
-          </div>
-          <div className="p-6 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <h3 className="text-lg font-semibold">{t('hotel')}</h3>
-          </div>
-          <div className="p-6 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <h3 className="text-lg font-semibold">{t('clothing')}</h3>
-          </div>
+      <div className="text-center space-y-8 max-w-4xl">
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+            {t('welcome')} {t('appName')}
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            {t('selectBusinessType')}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+          <BusinessTypeCard type="barber" />
+          <BusinessTypeCard type="grocery" />
+          <BusinessTypeCard type="hotel" />
+          <BusinessTypeCard type="clothing" />
         </div>
       </div>
     </div>
