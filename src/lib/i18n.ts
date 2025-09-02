@@ -13,7 +13,7 @@ export const LANGUAGES: Language[] = [
 export const translations = {
   en: {
     // Navigation & Header
-    appName: 'Local Business Hub',
+    appName: 'Vyapaar Saathi AI',
     dashboard: 'Dashboard',
     sales: 'Sales',
     inventory: 'Inventory',
@@ -53,7 +53,7 @@ export const translations = {
   },
   hi: {
     // Navigation & Header
-    appName: 'स्थानीय व्यापार हब',
+    appName: 'व्यापार साथी AI',
     dashboard: 'डैशबोर्ड',
     sales: 'बिक्री',
     inventory: 'इन्वेंटरी',
@@ -93,7 +93,7 @@ export const translations = {
   },
   kn: {
     // Navigation & Header
-    appName: 'ಸ್ಥಳೀಯ ವ್ಯಾಪಾರ ಹಬ್',
+    appName: 'ವ್ಯಾಪಾರ ಸಾಥಿ AI',
     dashboard: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
     sales: 'ಮಾರಾಟ',
     inventory: 'ದಾಸ್ತಾನು',

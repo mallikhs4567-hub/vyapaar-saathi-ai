@@ -2,6 +2,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardCard } from '@/components/DashboardCard';
 import { AIAssistant } from '@/components/AIAssistant';
+import { SalesManagement } from '@/components/SalesManagement';
+import { InventoryManagement } from '@/components/InventoryManagement';
+import { FinanceTracking } from '@/components/FinanceTracking';
+import { PromotionTools } from '@/components/PromotionTools';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +16,8 @@ import {
   AlertCircle,
   Share2,
   BarChart3,
-  Wallet
+  Wallet,
+  Home
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -23,11 +28,17 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t('appName')} - {t(businessType as any)}
-          </h1>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+              <Home className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t('appName')} - {t(businessType as any)}
+            </h1>
+          </div>
           <LanguageSelector />
         </div>
       </header>
@@ -103,31 +114,19 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="sales">
-            <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('sales')} Management</h3>
-              <p className="text-muted-foreground">Sales tracking and analytics will be implemented here.</p>
-            </div>
+            <SalesManagement />
           </TabsContent>
 
           <TabsContent value="inventory">
-            <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('inventory')} Management</h3>
-              <p className="text-muted-foreground">Inventory tracking and management will be implemented here.</p>
-            </div>
+            <InventoryManagement />
           </TabsContent>
 
           <TabsContent value="finance">
-            <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('finance')} Tracking</h3>
-              <p className="text-muted-foreground">Financial reports and tracking will be implemented here.</p>
-            </div>
+            <FinanceTracking />
           </TabsContent>
 
           <TabsContent value="promote">
-            <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('promote')} Your Business</h3>
-              <p className="text-muted-foreground">Business promotion tools and platform integrations will be implemented here.</p>
-            </div>
+            <PromotionTools />
           </TabsContent>
         </Tabs>
       </div>
