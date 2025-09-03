@@ -1,4 +1,5 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardCard } from '@/components/DashboardCard';
 import { AIAssistant } from '@/components/AIAssistant';
@@ -7,6 +8,7 @@ import { InventoryManagement } from '@/components/InventoryManagement';
 import { FinanceTracking } from '@/components/FinanceTracking';
 import { PromotionTools } from '@/components/PromotionTools';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { GreetingMessage } from '@/components/GreetingMessage';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -22,8 +24,10 @@ import {
 
 export default function Dashboard() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const businessType = searchParams.get('businessType') || 'general';
+  const [showGreeting, setShowGreeting] = useState(true);
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,7 +35,7 @@ export default function Dashboard() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
               <Home className="h-4 w-4 mr-2" />
               Back to Home
             </Button>
@@ -54,6 +58,14 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Greeting Message */}
+            {showGreeting && (
+              <GreetingMessage 
+                businessType={businessType} 
+                onClose={() => setShowGreeting(false)} 
+              />
+            )}
+            
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <DashboardCard
