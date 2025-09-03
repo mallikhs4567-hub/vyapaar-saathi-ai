@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Eye, TrendingUp, Calendar } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface Sale {
   id: string;
@@ -62,7 +63,14 @@ export const SalesManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const handleAddSale = () => {
-    if (!newSale.customerName || !newSale.amount) return;
+    if (!newSale.customerName || !newSale.amount) {
+      toast({
+        title: "Error",
+        description: "Please fill in customer name and amount",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const sale: Sale = {
       id: (Date.now()).toString(),
@@ -76,6 +84,11 @@ export const SalesManagement = () => {
     setSales(prev => [sale, ...prev]);
     setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
     setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Sale Recorded",
+      description: `₹${sale.amount} sale added successfully`,
+    });
   };
 
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Wallet, TrendingUp, CreditCard, ArrowUpDown } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface Transaction {
   id: string;
@@ -74,7 +75,14 @@ export const FinanceTracking = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const handleAddTransaction = () => {
-    if (!newTransaction.amount || !newTransaction.description) return;
+    if (!newTransaction.amount || !newTransaction.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in amount and description",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const transaction: Transaction = {
       id: Date.now().toString(),
@@ -88,6 +96,11 @@ export const FinanceTracking = () => {
     setTransactions(prev => [transaction, ...prev]);
     setNewTransaction({ type: 'expense', amount: '', description: '', category: '' });
     setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Transaction Added",
+      description: `${transaction.type === 'income' ? 'Income' : 'Expense'} of ₹${transaction.amount} recorded`,
+    });
   };
 
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);

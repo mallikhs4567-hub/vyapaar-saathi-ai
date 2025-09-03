@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Package, AlertTriangle, Minus } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface InventoryItem {
   id: string;
@@ -66,7 +67,14 @@ export const InventoryManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const handleAddItem = () => {
-    if (!newItem.name || !newItem.quantity || !newItem.price) return;
+    if (!newItem.name || !newItem.quantity || !newItem.price) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const item: InventoryItem = {
       id: Date.now().toString(),
@@ -80,6 +88,11 @@ export const InventoryManagement = () => {
     setInventory(prev => [...prev, item]);
     setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
     setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Item Added",
+      description: `${item.name} added to inventory successfully`,
+    });
   };
 
   const updateQuantity = (id: string, change: number) => {
