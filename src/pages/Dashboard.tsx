@@ -1,6 +1,8 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { DashboardCard } from '@/components/DashboardCard';
 import { AIAssistant } from '@/components/AIAssistant';
 import { SalesManagement } from '@/components/SalesManagement';
@@ -19,15 +21,64 @@ import {
   Share2,
   BarChart3,
   Wallet,
-  Home
+  Home,
+  LogOut,
+  User
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { t } = useLanguage();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const businessType = searchParams.get('businessType') || 'general';
   const [showGreeting, setShowGreeting] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (user) {
+      fetchProfile();
+    }
+  }, [user, loading, navigate]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (data) {
+      setProfile(data);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-primary mb-2">Vyapaar Saathi AI</div>
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,15 +86,31 @@ export default function Dashboard() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-              <Home className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-            <h1 className="text-2xl font-bold text-foreground">
-              {t('appName')} - {t(businessType as any)}
-            </h1>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-sm font-bold text-primary-foreground">VS</span>
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">
+                {profile?.shop_name || 'Vyapaar Saathi AI'}
+              </h1>
+            </div>
+            {profile?.shop_category && (
+              <span className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm">
+                {profile.shop_category}
+              </span>
+            )}
           </div>
-          <LanguageSelector />
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="text-sm">{profile?.full_name || user.email}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -61,7 +128,7 @@ export default function Dashboard() {
             {/* Greeting Message */}
             {showGreeting && (
               <GreetingMessage 
-                businessType={businessType} 
+                businessType={profile?.shop_category || businessType} 
                 onClose={() => setShowGreeting(false)} 
               />
             )}
