@@ -85,6 +85,7 @@ const Auth = () => {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
+            shop_category: shopCategory,
           }
         }
       });
@@ -96,19 +97,21 @@ const Auth = () => {
           variant: "destructive",
         });
       } else if (data.user) {
-        // Create profile with shop details
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            user_id: data.user.id,
-            full_name: fullName,
-            shop_name: shopName,
-            shop_category: shopCategory,
-          });
+        // Update profile with shop details after successful signup
+        setTimeout(async () => {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              full_name: fullName,
+              shop_name: shopName,
+              shop_category: shopCategory,
+            })
+            .eq('user_id', data.user.id);
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-        }
+          if (profileError) {
+            console.error('Profile update error:', profileError);
+          }
+        }, 1000);
 
         toast({
           title: "Account created successfully!",
