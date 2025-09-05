@@ -61,8 +61,17 @@ export default function Dashboard() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        return;
+      }
+      // Navigate to home page after successful sign out
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
   };
 
   if (loading) {
