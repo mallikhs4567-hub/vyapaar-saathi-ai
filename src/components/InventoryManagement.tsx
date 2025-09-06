@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Package, AlertTriangle, Minus } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Minus, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface InventoryItem {
@@ -65,6 +65,8 @@ export const InventoryManagement = () => {
   });
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
   const handleAddItem = () => {
     if (!newItem.name || !newItem.quantity || !newItem.price) {
@@ -101,6 +103,59 @@ export const InventoryManagement = () => {
         ? { ...item, quantity: Math.max(0, item.quantity + change) }
         : item
     ));
+  };
+
+  const handleEditItem = (item: InventoryItem) => {
+    setEditingItem(item);
+    setNewItem({
+      name: item.name,
+      quantity: item.quantity.toString(),
+      minStock: item.minStock.toString(),
+      price: item.price.toString(),
+      category: item.category
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateItem = () => {
+    if (!editingItem || !newItem.name || !newItem.quantity || !newItem.price) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedItem: InventoryItem = {
+      ...editingItem,
+      name: newItem.name,
+      quantity: parseInt(newItem.quantity),
+      minStock: parseInt(newItem.minStock) || 5,
+      price: parseFloat(newItem.price),
+      category: newItem.category
+    };
+
+    setInventory(prev => prev.map(item => 
+      item.id === editingItem.id ? updatedItem : item
+    ));
+    
+    setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
+    setIsEditDialogOpen(false);
+    setEditingItem(null);
+    
+    toast({
+      title: "Item Updated",
+      description: `${updatedItem.name} updated successfully`,
+    });
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setInventory(prev => prev.filter(item => item.id !== id));
+    toast({
+      title: "Item Deleted",
+      description: "Item removed from inventory",
+    });
   };
 
   const lowStockItems = inventory.filter(item => item.quantity <= item.minStock);
@@ -242,6 +297,76 @@ export const InventoryManagement = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Item Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editItemName">Item Name</Label>
+                <Input
+                  id="editItemName"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter item name"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="editQuantity">Quantity</Label>
+                  <Input
+                    id="editQuantity"
+                    type="number"
+                    value={newItem.quantity}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editMinStock">Min Stock</Label>
+                  <Input
+                    id="editMinStock"
+                    type="number"
+                    value={newItem.minStock}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, minStock: e.target.value }))}
+                    placeholder="5"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="editPrice">Price per unit (₹)</Label>
+                <Input
+                  id="editPrice"
+                  type="number"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, price: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <Label>Category</Label>
+                <div className="flex gap-2 mt-2">
+                  {['Products', 'Equipment', 'Supplies'].map((category) => (
+                    <Button
+                      key={category}
+                      variant={newItem.category === category ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setNewItem(prev => ({ ...prev, category }))}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <Button onClick={handleUpdateItem} className="w-full">
+                Update Item
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Inventory Table */}
@@ -294,6 +419,20 @@ export const InventoryManagement = () => {
                         onClick={() => updateQuantity(item.id, 1)}
                       >
                         <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditItem(item)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteItem(item.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </TableCell>

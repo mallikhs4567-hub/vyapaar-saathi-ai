@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, TrendingUp, Calendar } from 'lucide-react';
+import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Sale {
@@ -61,6 +61,8 @@ export const SalesManagement = () => {
   });
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
 
   const handleAddSale = () => {
     if (!newSale.customerName || !newSale.amount) {
@@ -88,6 +90,57 @@ export const SalesManagement = () => {
     toast({
       title: "Sale Recorded",
       description: `₹${sale.amount} sale added successfully`,
+    });
+  };
+
+  const handleEditSale = (sale: Sale) => {
+    setEditingSale(sale);
+    setNewSale({
+      customerName: sale.customerName,
+      amount: sale.amount.toString(),
+      items: sale.items.join(', '),
+      paymentMethod: sale.paymentMethod
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateSale = () => {
+    if (!editingSale || !newSale.customerName || !newSale.amount) {
+      toast({
+        title: "Error",
+        description: "Please fill in customer name and amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedSale: Sale = {
+      ...editingSale,
+      customerName: newSale.customerName,
+      amount: parseFloat(newSale.amount),
+      items: newSale.items.split(',').map(item => item.trim()),
+      paymentMethod: newSale.paymentMethod
+    };
+
+    setSales(prev => prev.map(sale => 
+      sale.id === editingSale.id ? updatedSale : sale
+    ));
+    
+    setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
+    setIsEditDialogOpen(false);
+    setEditingSale(null);
+    
+    toast({
+      title: "Sale Updated",
+      description: `Sale updated successfully`,
+    });
+  };
+
+  const handleDeleteSale = (id: string) => {
+    setSales(prev => prev.filter(sale => sale.id !== id));
+    toast({
+      title: "Sale Deleted",
+      description: "Sale removed successfully",
     });
   };
 
@@ -198,6 +251,63 @@ export const SalesManagement = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Sale Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Sale</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editCustomerName">Customer Name</Label>
+                <Input
+                  id="editCustomerName"
+                  value={newSale.customerName}
+                  onChange={(e) => setNewSale(prev => ({ ...prev, customerName: e.target.value }))}
+                  placeholder="Enter customer name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="editAmount">Amount (₹)</Label>
+                <Input
+                  id="editAmount"
+                  type="number"
+                  value={newSale.amount}
+                  onChange={(e) => setNewSale(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div>
+                <Label htmlFor="editItems">Services/Items (comma separated)</Label>
+                <Input
+                  id="editItems"
+                  value={newSale.items}
+                  onChange={(e) => setNewSale(prev => ({ ...prev, items: e.target.value }))}
+                  placeholder="Haircut, Beard Trim, etc."
+                />
+              </div>
+              <div>
+                <Label>Payment Method</Label>
+                <div className="flex gap-2 mt-2">
+                  {(['cash', 'upi', 'card'] as const).map((method) => (
+                    <Button
+                      key={method}
+                      variant={newSale.paymentMethod === method ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setNewSale(prev => ({ ...prev, paymentMethod: method }))}
+                    >
+                      {method.toUpperCase()}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <Button onClick={handleUpdateSale} className="w-full">
+                Update Sale
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Sales Table */}
@@ -214,6 +324,7 @@ export const SalesManagement = () => {
                 <TableHead>Items/Services</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Payment</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -235,6 +346,24 @@ export const SalesManagement = () => {
                     <Badge variant={sale.paymentMethod === 'cash' ? 'outline' : 'default'}>
                       {sale.paymentMethod.toUpperCase()}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditSale(sale)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteSale(sale.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

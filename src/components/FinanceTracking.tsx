@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Wallet, TrendingUp, CreditCard, ArrowUpDown } from 'lucide-react';
+import { Plus, Wallet, TrendingUp, CreditCard, ArrowUpDown, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Transaction {
@@ -73,6 +73,8 @@ export const FinanceTracking = () => {
   });
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const handleAddTransaction = () => {
     if (!newTransaction.amount || !newTransaction.description) {
@@ -100,6 +102,57 @@ export const FinanceTracking = () => {
     toast({
       title: "Transaction Added",
       description: `${transaction.type === 'income' ? 'Income' : 'Expense'} of ₹${transaction.amount} recorded`,
+    });
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setNewTransaction({
+      type: transaction.type,
+      amount: transaction.amount.toString(),
+      description: transaction.description,
+      category: transaction.category
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTransaction = () => {
+    if (!editingTransaction || !newTransaction.amount || !newTransaction.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in amount and description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedTransaction: Transaction = {
+      ...editingTransaction,
+      type: newTransaction.type,
+      amount: parseFloat(newTransaction.amount),
+      description: newTransaction.description,
+      category: newTransaction.category || (newTransaction.type === 'income' ? 'Sales' : 'Other')
+    };
+
+    setTransactions(prev => prev.map(transaction => 
+      transaction.id === editingTransaction.id ? updatedTransaction : transaction
+    ));
+    
+    setNewTransaction({ type: 'expense', amount: '', description: '', category: '' });
+    setIsEditDialogOpen(false);
+    setEditingTransaction(null);
+    
+    toast({
+      title: "Transaction Updated",
+      description: `Transaction updated successfully`,
+    });
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+    toast({
+      title: "Transaction Deleted",
+      description: "Transaction removed successfully",
     });
   };
 
@@ -242,6 +295,67 @@ export const FinanceTracking = () => {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Edit Transaction Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Transaction</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Transaction Type</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant={newTransaction.type === 'income' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setNewTransaction(prev => ({ ...prev, type: 'income' }))}
+                      >
+                        Income
+                      </Button>
+                      <Button
+                        variant={newTransaction.type === 'expense' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setNewTransaction(prev => ({ ...prev, type: 'expense' }))}
+                      >
+                        Expense
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="editAmount">Amount (₹)</Label>
+                    <Input
+                      id="editAmount"
+                      type="number"
+                      value={newTransaction.amount}
+                      onChange={(e) => setNewTransaction(prev => ({ ...prev, amount: e.target.value }))}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editDescription">Description</Label>
+                    <Input
+                      id="editDescription"
+                      value={newTransaction.description}
+                      onChange={(e) => setNewTransaction(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Enter description"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editCategory">Category</Label>
+                    <Input
+                      id="editCategory"
+                      value={newTransaction.category}
+                      onChange={(e) => setNewTransaction(prev => ({ ...prev, category: e.target.value }))}
+                      placeholder={newTransaction.type === 'income' ? 'e.g., Sales' : 'e.g., Rent, Utilities'}
+                    />
+                  </div>
+                  <Button onClick={handleUpdateTransaction} className="w-full">
+                    Update Transaction
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Transactions Table */}
@@ -255,6 +369,7 @@ export const FinanceTracking = () => {
                     <TableHead>Category</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -273,6 +388,24 @@ export const FinanceTracking = () => {
                         {transaction.type === 'income' ? '+' : '-'}₹{transaction.amount}
                       </TableCell>
                       <TableCell>{transaction.date.toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditTransaction(transaction)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteTransaction(transaction.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
