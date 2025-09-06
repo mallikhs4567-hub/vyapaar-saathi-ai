@@ -7,11 +7,15 @@ interface DashboardCardProps {
   icon: LucideIcon;
   trend?: string;
   trendUp?: boolean;
+  onClick?: () => void;
 }
 
-export const DashboardCard = ({ title, value, icon: Icon, trend, trendUp }: DashboardCardProps) => {
+export const DashboardCard = ({ title, value, icon: Icon, trend, trendUp, onClick }: DashboardCardProps) => {
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card 
+      className={`hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+      onClick={onClick}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}

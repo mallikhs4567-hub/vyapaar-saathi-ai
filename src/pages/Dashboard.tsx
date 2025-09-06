@@ -89,6 +89,13 @@ export default function Dashboard() {
     return null;
   }
 
+  const switchToTab = (tabValue: string) => {
+    const tabElement = document.querySelector(`[value="${tabValue}"]`) as HTMLElement;
+    if (tabElement) {
+      tabElement.click();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -127,6 +134,13 @@ export default function Dashboard() {
         <Tabs defaultValue="dashboard" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">{t('dashboard')}</TabsTrigger>
+            <TabsTrigger value="sales" data-tab="sales">{t('sales')}</TabsTrigger>
+            <TabsTrigger value="inventory" data-tab="inventory">{t('inventory')}</TabsTrigger>
+            <TabsTrigger value="finance" data-tab="finance">{t('finance')}</TabsTrigger>
+            <TabsTrigger value="promote" data-tab="promote">{t('promote')}</TabsTrigger>
+          </TabsList>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">{t('dashboard')}</TabsTrigger>
             <TabsTrigger value="sales">{t('sales')}</TabsTrigger>
             <TabsTrigger value="inventory">{t('inventory')}</TabsTrigger>
             <TabsTrigger value="finance">{t('finance')}</TabsTrigger>
@@ -150,6 +164,7 @@ export default function Dashboard() {
                 icon={DollarSign}
                 trend="+12.5% from yesterday"
                 trendUp={true}
+                onClick={() => switchToTab('sales')}
               />
               <DashboardCard
                 title={t('totalRevenue')}
@@ -157,18 +172,21 @@ export default function Dashboard() {
                 icon={TrendingUp}
                 trend="+8.2% this month"
                 trendUp={true}
+                onClick={() => switchToTab('finance')}
               />
               <DashboardCard
                 title={t('lowStock')}
                 value="5"
                 icon={AlertCircle}
                 trend="Items need restocking"
+                onClick={() => switchToTab('inventory')}
               />
               <DashboardCard
                 title={t('pendingPayments')}
                 value="₹8,900"
                 icon={Package}
                 trend="3 pending invoices"
+                onClick={() => switchToTab('finance')}
               />
             </div>
 
@@ -179,19 +197,35 @@ export default function Dashboard() {
                 <div className="p-6 border rounded-lg bg-card">
                   <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Actions</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col items-center justify-center"
+                      onClick={() => switchToTab('finance')}
+                    >
                       <BarChart3 className="h-6 w-6 mb-2" />
                       View Reports
                     </Button>
-                    <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col items-center justify-center"
+                      onClick={() => switchToTab('promote')}
+                    >
                       <Share2 className="h-6 w-6 mb-2" />
                       Share Business
                     </Button>
-                    <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col items-center justify-center"
+                      onClick={() => switchToTab('inventory')}
+                    >
                       <Package className="h-6 w-6 mb-2" />
                       Add Inventory
                     </Button>
-                    <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col items-center justify-center"
+                      onClick={() => switchToTab('sales')}
+                    >
                       <Wallet className="h-6 w-6 mb-2" />
                       Record Sale
                     </Button>
