@@ -134,13 +134,6 @@ export default function Dashboard() {
         <Tabs defaultValue="dashboard" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">{t('dashboard')}</TabsTrigger>
-            <TabsTrigger value="sales" data-tab="sales">{t('sales')}</TabsTrigger>
-            <TabsTrigger value="inventory" data-tab="inventory">{t('inventory')}</TabsTrigger>
-            <TabsTrigger value="finance" data-tab="finance">{t('finance')}</TabsTrigger>
-            <TabsTrigger value="promote" data-tab="promote">{t('promote')}</TabsTrigger>
-          </TabsList>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard">{t('dashboard')}</TabsTrigger>
             <TabsTrigger value="sales">{t('sales')}</TabsTrigger>
             <TabsTrigger value="inventory">{t('inventory')}</TabsTrigger>
             <TabsTrigger value="finance">{t('finance')}</TabsTrigger>
