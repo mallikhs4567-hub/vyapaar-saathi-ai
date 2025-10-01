@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-
+import { useAuth } from '@/contexts/AuthContext';
 const SHOP_CATEGORIES = [
   'Grocery Store',
   'Electronics',
@@ -35,7 +35,13 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session, loading: authLoading } = useAuth();
 
+  useEffect(() => {
+    if (!authLoading && session) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, session, navigate]);
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
