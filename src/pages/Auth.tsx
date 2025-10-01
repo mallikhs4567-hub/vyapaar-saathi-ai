@@ -33,15 +33,60 @@ const Auth = () => {
   const [shopName, setShopName] = useState('');
   const [shopCategory, setShopCategory] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthProcessing, setOauthProcessing] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { session, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    document.title = 'Sign In | Vyapaar Saathi AI';
+  }, []);
 
   useEffect(() => {
     if (!authLoading && session) {
       navigate('/dashboard', { replace: true });
     }
   }, [authLoading, session, navigate]);
+
+  useEffect(() => {
+    // Handle OAuth callback (?code=) and surface provider errors
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    const error = url.searchParams.get('error_description') || url.searchParams.get('error');
+
+    const hash = window.location.hash;
+    const hashParams = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+    const hashError = hashParams.get('error_description') || hashParams.get('error');
+
+    if (error || hashError) {
+      toast({
+        title: 'Authentication error',
+        description: (error || hashError) as string,
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, document.title, '/auth');
+      return;
+    }
+
+    if (code && !session) {
+      setOauthProcessing(true);
+      supabase.auth.exchangeCodeForSession(window.location.href)
+        .then(({ error }) => {
+          if (error) {
+            toast({
+              title: 'Sign-in failed',
+              description: error.message,
+              variant: 'destructive',
+            });
+          }
+        })
+        .finally(() => {
+          setOauthProcessing(false);
+          window.history.replaceState({}, document.title, '/auth');
+        });
+    }
+  }, [session, toast]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -83,7 +128,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/dashboard`;
+      const redirectUrl = `${window.location.origin}/auth`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -104,7 +149,7 @@ const Auth = () => {
           variant: "destructive",
         });
       } else if (data.user) {
-        // Update profile with shop details after successful signup
+        // Update profile with shop details (best-effort)
         setTimeout(async () => {
           const { error: profileError } = await supabase
             .from('profiles')
@@ -120,12 +165,18 @@ const Auth = () => {
           }
         }, 1000);
 
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to Vyapaar Saathi AI",
-        });
-        
-        navigate('/dashboard');
+        if (data.session) {
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Vyapaar Saathi AI",
+          });
+          navigate('/dashboard');
+        } else {
+          toast({
+            title: "Verify your email",
+            description: "We sent you a confirmation link to finish signing in.",
+          });
+        }
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -139,7 +190,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/auth`
         }
       });
 
@@ -180,7 +231,7 @@ const Auth = () => {
                   onClick={handleGoogleSignIn} 
                   variant="outline" 
                   className="w-full"
-                  disabled={loading}
+                  disabled={loading || oauthProcessing}
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -236,7 +287,7 @@ const Auth = () => {
                   onClick={handleGoogleSignIn} 
                   variant="outline" 
                   className="w-full"
-                  disabled={loading}
+                  disabled={loading || oauthProcessing}
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
