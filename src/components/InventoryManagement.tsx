@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Package, AlertTriangle, Minus, Edit, Trash2, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Minus, Edit, Trash2, Loader2, Activity } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface InventoryItem {
@@ -40,41 +40,7 @@ export const InventoryManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
-  // Real-time subscription with credit saver
-  const { isSubscribed } = useRealtimeSubscription(
-    {
-      table: 'Inventory',
-      events: ['INSERT', 'UPDATE', 'DELETE'],
-      throttleMs: 1500,
-      filter: user ? `user_id=eq.${user.id}` : undefined,
-      onInsert: () => {
-        console.log('New inventory item detected, refreshing...');
-        fetchInventory();
-      },
-      onUpdate: () => {
-        console.log('Inventory item updated, refreshing...');
-        fetchInventory();
-      },
-      onDelete: () => {
-        console.log('Inventory item deleted, refreshing...');
-        fetchInventory();
-      }
-    },
-    {
-      enabled: true,
-      autoUnsubscribeOn: ['user_offline', 'tab_inactive', 'no_changes_5min'],
-      autoResumeOn: ['user_active', 'tab_focus', 'manual_refresh']
-    }
-  );
-
-  // Fetch inventory data
-  useEffect(() => {
-    if (user) {
-      fetchInventory();
-    }
-  }, [user]);
-
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -107,7 +73,17 @@ export const InventoryManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Real-time subscription with credit saver
+  const { isSubscribed } = useRealtimeSubscription({
+    table: 'Inventory',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: fetchInventory,
+    throttleMs: 1500,
+    enableCreditSaver: true,
+  });
 
   const handleAddItem = async () => {
     if (!user || !newItem.name || !newItem.quantity || !newItem.price) {
@@ -276,6 +252,14 @@ export const InventoryManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Real-time Status Indicator */}
+      {isSubscribed && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Activity className="h-4 w-4 text-green-500 animate-pulse" />
+          <span>Real-time updates active</span>
+        </div>
+      )}
+
       {/* Inventory Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -339,12 +323,12 @@ export const InventoryManagement = () => {
           <h3 className="text-lg font-semibold">Inventory Items</h3>
           {isSubscribed ? (
             <Badge variant="outline" className="gap-1">
-              <Wifi className="h-3 w-3" />
+              <Activity className="h-3 w-3" />
               Live
             </Badge>
           ) : (
             <Badge variant="secondary" className="gap-1">
-              <WifiOff className="h-3 w-3" />
+              <Activity className="h-3 w-3 opacity-50" />
               Offline
             </Badge>
           )}

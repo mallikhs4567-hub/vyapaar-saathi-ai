@@ -4,105 +4,44 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface UseRealtimeSubscriptionOptions {
   table: string;
+  userId: string | undefined;
   events: ('INSERT' | 'UPDATE' | 'DELETE')[];
+  onDataChange: () => void;
   throttleMs?: number;
-  onInsert?: (payload: any) => void;
-  onUpdate?: (payload: any) => void;
-  onDelete?: (payload: any) => void;
-  filter?: string;
+  enableCreditSaver?: boolean;
 }
 
-interface CreditSaverConfig {
-  enabled: boolean;
-  autoUnsubscribeOn: ('user_offline' | 'tab_inactive' | 'no_changes_5min')[];
-  autoResumeOn: ('user_active' | 'tab_focus' | 'manual_refresh')[];
-}
-
-export const useRealtimeSubscription = (
-  options: UseRealtimeSubscriptionOptions,
-  creditSaver: CreditSaverConfig = {
-    enabled: true,
-    autoUnsubscribeOn: ['tab_inactive', 'no_changes_5min'],
-    autoResumeOn: ['tab_focus', 'manual_refresh']
-  }
-) => {
+export const useRealtimeSubscription = ({
+  table,
+  userId,
+  events,
+  onDataChange,
+  throttleMs = 1000,
+  enableCreditSaver = true,
+}: UseRealtimeSubscriptionOptions) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const lastChangeRef = useRef<number>(Date.now());
   const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingUpdateRef = useRef(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isActiveRef = useRef(true);
 
-  const handlePayload = (event: string, payload: any) => {
-    lastChangeRef.current = Date.now();
-    
-    // Reset inactivity timer
-    if (creditSaver.enabled && creditSaver.autoUnsubscribeOn.includes('no_changes_5min')) {
-      clearTimeout(inactivityTimerRef.current!);
-      inactivityTimerRef.current = setTimeout(() => {
-        unsubscribe();
-      }, 5 * 60 * 1000); // 5 minutes
-    }
-
-    // Throttle handling
-    if (options.throttleMs && throttleTimerRef.current) {
+  const handleDataChange = () => {
+    if (throttleTimerRef.current) {
+      pendingUpdateRef.current = true;
       return;
     }
 
-    if (options.throttleMs) {
-      throttleTimerRef.current = setTimeout(() => {
-        throttleTimerRef.current = null;
-      }, options.throttleMs);
-    }
+    onDataChange();
+    pendingUpdateRef.current = false;
 
-    // Call appropriate handler
-    if (event === 'INSERT' && options.onInsert) {
-      options.onInsert(payload);
-    } else if (event === 'UPDATE' && options.onUpdate) {
-      options.onUpdate(payload);
-    } else if (event === 'DELETE' && options.onDelete) {
-      options.onDelete(payload);
-    }
-  };
-
-  const subscribe = () => {
-    if (channelRef.current || isSubscribed) return;
-
-    const channelName = `${options.table}-changes-${Date.now()}`;
-    const channel = supabase.channel(channelName);
-
-    options.events.forEach(event => {
-      const config: any = {
-        event,
-        schema: 'public',
-        table: options.table,
-      };
-      
-      if (options.filter) {
-        config.filter = options.filter;
+    throttleTimerRef.current = setTimeout(() => {
+      throttleTimerRef.current = null;
+      if (pendingUpdateRef.current) {
+        onDataChange();
+        pendingUpdateRef.current = false;
       }
-
-      channel.on(
-        'postgres_changes' as any,
-        config,
-        (payload: any) => handlePayload(event, payload)
-      );
-    });
-
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        setIsSubscribed(true);
-        console.log(`✅ Subscribed to ${options.table} real-time updates`);
-      }
-    });
-
-    channelRef.current = channel;
-
-    // Set up inactivity timer
-    if (creditSaver.enabled && creditSaver.autoUnsubscribeOn.includes('no_changes_5min')) {
-      inactivityTimerRef.current = setTimeout(() => {
-        unsubscribe();
-      }, 5 * 60 * 1000);
-    }
+    }, throttleMs);
   };
 
   const unsubscribe = () => {
@@ -110,65 +49,91 @@ export const useRealtimeSubscription = (
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
       setIsSubscribed(false);
-      console.log(`❌ Unsubscribed from ${options.table} real-time updates`);
-    }
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
     }
   };
 
+  const subscribe = () => {
+    if (!userId || channelRef.current) return;
+
+    const channel = supabase
+      .channel(`${table}-changes-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: table,
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+          if (events.includes(eventType)) {
+            console.log(`Real-time ${eventType} on ${table}:`, payload);
+            handleDataChange();
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsSubscribed(true);
+          console.log(`Subscribed to ${table} real-time updates`);
+        }
+      });
+
+    channelRef.current = channel;
+  };
+
+  // Credit Saver: Handle visibility changes
   useEffect(() => {
-    if (!creditSaver.enabled) {
-      subscribe();
-      return () => unsubscribe();
-    }
+    if (!enableCreditSaver) return;
 
-    // Credit saver: Handle visibility change
     const handleVisibilityChange = () => {
-      if (document.hidden && creditSaver.autoUnsubscribeOn.includes('tab_inactive')) {
-        unsubscribe();
-      } else if (!document.hidden && creditSaver.autoResumeOn.includes('tab_focus')) {
-        subscribe();
+      if (document.hidden) {
+        isActiveRef.current = false;
+        // Start inactivity timer (5 minutes)
+        inactivityTimerRef.current = setTimeout(() => {
+          console.log(`Auto-unsubscribing from ${table} due to inactivity`);
+          unsubscribe();
+        }, 5 * 60 * 1000);
+      } else {
+        isActiveRef.current = true;
+        // Clear inactivity timer
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        // Resubscribe if not already subscribed
+        if (!channelRef.current && userId) {
+          console.log(`Auto-resuming subscription to ${table}`);
+          subscribe();
+          onDataChange(); // Refresh data
+        }
       }
     };
 
-    // Credit saver: Handle online/offline
-    const handleOnline = () => {
-      if (creditSaver.autoResumeOn.includes('user_active')) {
-        subscribe();
-      }
-    };
-
-    const handleOffline = () => {
-      if (creditSaver.autoUnsubscribeOn.includes('user_offline')) {
-        unsubscribe();
-      }
-    };
-
-    // Initial subscription
-    if (!document.hidden) {
-      subscribe();
-    }
-
-    // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+    };
+  }, [enableCreditSaver, userId, table]);
+
+  // Initial subscription
+  useEffect(() => {
+    if (userId) {
+      subscribe();
+    }
+
+    return () => {
       unsubscribe();
       if (throttleTimerRef.current) {
         clearTimeout(throttleTimerRef.current);
       }
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
     };
-  }, [options.table, creditSaver.enabled]);
+  }, [userId, table]);
 
-  return {
-    isSubscribed,
-    subscribe,
-    unsubscribe
-  };
+  return { isSubscribed, subscribe, unsubscribe };
 };

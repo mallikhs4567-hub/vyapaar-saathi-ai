@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2, Activity } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Sale {
@@ -44,37 +44,7 @@ export const SalesManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
 
-  // Real-time subscription with credit saver
-  const { isSubscribed } = useRealtimeSubscription(
-    {
-      table: 'Sales',
-      events: ['INSERT', 'UPDATE'],
-      throttleMs: 1000,
-      filter: user ? `user_id=eq.${user.id}` : undefined,
-      onInsert: () => {
-        console.log('New sale detected, refreshing...');
-        fetchSales();
-      },
-      onUpdate: () => {
-        console.log('Sale updated, refreshing...');
-        fetchSales();
-      }
-    },
-    {
-      enabled: true,
-      autoUnsubscribeOn: ['user_offline', 'tab_inactive', 'no_changes_5min'],
-      autoResumeOn: ['user_active', 'tab_focus', 'manual_refresh']
-    }
-  );
-
-  // Fetch sales data
-  useEffect(() => {
-    if (user) {
-      fetchSales();
-    }
-  }, [user]);
-
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -107,7 +77,17 @@ export const SalesManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Real-time subscription with credit saver
+  const { isSubscribed } = useRealtimeSubscription({
+    table: 'Sales',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE'],
+    onDataChange: fetchSales,
+    throttleMs: 1000,
+    enableCreditSaver: true,
+  });
 
   const handleAddSale = async () => {
     if (!user || !newSale.customerName || !newSale.amount) {
@@ -249,6 +229,14 @@ export const SalesManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Real-time Status Indicator */}
+      {isSubscribed && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Activity className="h-4 w-4 text-green-500 animate-pulse" />
+          <span>Real-time updates active</span>
+        </div>
+      )}
+
       {/* Sales Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -291,12 +279,12 @@ export const SalesManagement = () => {
           <h3 className="text-lg font-semibold">Recent Sales</h3>
           {isSubscribed ? (
             <Badge variant="outline" className="gap-1">
-              <Wifi className="h-3 w-3" />
+              <Activity className="h-3 w-3" />
               Live
             </Badge>
           ) : (
             <Badge variant="secondary" className="gap-1">
-              <WifiOff className="h-3 w-3" />
+              <Activity className="h-3 w-3 opacity-50" />
               Offline
             </Badge>
           )}
