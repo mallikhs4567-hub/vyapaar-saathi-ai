@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Sale {
@@ -42,6 +43,29 @@ export const SalesManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+
+  // Real-time subscription with credit saver
+  const { isSubscribed } = useRealtimeSubscription(
+    {
+      table: 'Sales',
+      events: ['INSERT', 'UPDATE'],
+      throttleMs: 1000,
+      filter: user ? `user_id=eq.${user.id}` : undefined,
+      onInsert: () => {
+        console.log('New sale detected, refreshing...');
+        fetchSales();
+      },
+      onUpdate: () => {
+        console.log('Sale updated, refreshing...');
+        fetchSales();
+      }
+    },
+    {
+      enabled: true,
+      autoUnsubscribeOn: ['user_offline', 'tab_inactive', 'no_changes_5min'],
+      autoResumeOn: ['user_active', 'tab_focus', 'manual_refresh']
+    }
+  );
 
   // Fetch sales data
   useEffect(() => {
@@ -263,7 +287,20 @@ export const SalesManagement = () => {
 
       {/* Add Sale Button */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Recent Sales</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">Recent Sales</h3>
+          {isSubscribed ? (
+            <Badge variant="outline" className="gap-1">
+              <Wifi className="h-3 w-3" />
+              Live
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1">
+              <WifiOff className="h-3 w-3" />
+              Offline
+            </Badge>
+          )}
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
