@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      Inventory: {
+        Row: {
+          Category: string | null
+          id: string
+          Item_name: string | null
+          Price_per_unit: number | null
+          "Stock quantity": number | null
+          user_id: string | null
+        }
+        Insert: {
+          Category?: string | null
+          id?: string
+          Item_name?: string | null
+          Price_per_unit?: number | null
+          "Stock quantity"?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          Category?: string | null
+          id?: string
+          Item_name?: string | null
+          Price_per_unit?: number | null
+          "Stock quantity"?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -41,6 +68,51 @@ export type Database = {
           shop_name?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      Sales: {
+        Row: {
+          Amount: number | null
+          Customer_name: string | null
+          Date: string | null
+          id: string
+          Product: string | null
+          Quantity: number | null
+          user_id: string | null
+        }
+        Insert: {
+          Amount?: number | null
+          Customer_name?: string | null
+          Date?: string | null
+          id?: string
+          Product?: string | null
+          Quantity?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          Amount?: number | null
+          Customer_name?: string | null
+          Date?: string | null
+          id?: string
+          Product?: string | null
+          Quantity?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      Users: {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
         }
         Relationships: []
       }

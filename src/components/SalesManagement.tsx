@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Sale {
@@ -21,32 +23,9 @@ interface Sale {
 
 export const SalesManagement = () => {
   const { t } = useLanguage();
-  const [sales, setSales] = useState<Sale[]>([
-    {
-      id: '1',
-      customerName: 'राजेश कुमार',
-      amount: 450,
-      items: ['Haircut', 'Beard Trim'],
-      date: new Date('2024-01-15'),
-      paymentMethod: 'upi'
-    },
-    {
-      id: '2',
-      customerName: 'सुनील शर्मा',
-      amount: 350,
-      items: ['Haircut'],
-      date: new Date('2024-01-15'),
-      paymentMethod: 'cash'
-    },
-    {
-      id: '3',
-      customerName: 'अमित पटेल',
-      amount: 650,
-      items: ['Haircut', 'Beard Trim', 'Hair Wash'],
-      date: new Date('2024-01-14'),
-      paymentMethod: 'card'
-    }
-  ]);
+  const { user } = useAuth();
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newSale, setNewSale] = useState<{
     customerName: string;
@@ -64,8 +43,50 @@ export const SalesManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
 
-  const handleAddSale = () => {
-    if (!newSale.customerName || !newSale.amount) {
+  // Fetch sales data
+  useEffect(() => {
+    if (user) {
+      fetchSales();
+    }
+  }, [user]);
+
+  const fetchSales = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('Sales')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('Date', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedSales: Sale[] = (data || []).map(sale => ({
+        id: sale.id,
+        customerName: sale.Customer_name || '',
+        amount: Number(sale.Amount) || 0,
+        items: sale.Product ? [sale.Product] : [],
+        date: sale.Date ? new Date(sale.Date) : new Date(),
+        paymentMethod: 'cash' as const
+      }));
+
+      setSales(formattedSales);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load sales data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSale = async () => {
+    if (!user || !newSale.customerName || !newSale.amount) {
       toast({
         title: "Error",
         description: "Please fill in customer name and amount",
@@ -74,23 +95,37 @@ export const SalesManagement = () => {
       return;
     }
 
-    const sale: Sale = {
-      id: (Date.now()).toString(),
-      customerName: newSale.customerName,
-      amount: parseFloat(newSale.amount),
-      items: newSale.items.split(',').map(item => item.trim()),
-      date: new Date(),
-      paymentMethod: newSale.paymentMethod
-    };
+    try {
+      const { error } = await supabase
+        .from('Sales')
+        .insert({
+          user_id: user.id,
+          Customer_name: newSale.customerName,
+          Amount: parseFloat(newSale.amount),
+          Product: newSale.items,
+          Date: new Date().toISOString().split('T')[0],
+          Quantity: 1
+        });
 
-    setSales(prev => [sale, ...prev]);
-    setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Sale Recorded",
-      description: `₹${sale.amount} sale added successfully`,
-    });
+      if (error) throw error;
+
+      setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Sale Recorded",
+        description: `₹${newSale.amount} sale added successfully`,
+      });
+
+      await fetchSales();
+    } catch (error) {
+      console.error('Error adding sale:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add sale",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditSale = (sale: Sale) => {
@@ -104,8 +139,8 @@ export const SalesManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateSale = () => {
-    if (!editingSale || !newSale.customerName || !newSale.amount) {
+  const handleUpdateSale = async () => {
+    if (!user || !editingSale || !newSale.customerName || !newSale.amount) {
       toast({
         title: "Error",
         description: "Please fill in customer name and amount",
@@ -114,40 +149,79 @@ export const SalesManagement = () => {
       return;
     }
 
-    const updatedSale: Sale = {
-      ...editingSale,
-      customerName: newSale.customerName,
-      amount: parseFloat(newSale.amount),
-      items: newSale.items.split(',').map(item => item.trim()),
-      paymentMethod: newSale.paymentMethod
-    };
+    try {
+      const { error } = await supabase
+        .from('Sales')
+        .update({
+          Customer_name: newSale.customerName,
+          Amount: parseFloat(newSale.amount),
+          Product: newSale.items
+        })
+        .eq('id', editingSale.id)
+        .eq('user_id', user.id);
 
-    setSales(prev => prev.map(sale => 
-      sale.id === editingSale.id ? updatedSale : sale
-    ));
-    
-    setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
-    setIsEditDialogOpen(false);
-    setEditingSale(null);
-    
-    toast({
-      title: "Sale Updated",
-      description: `Sale updated successfully`,
-    });
+      if (error) throw error;
+
+      setNewSale({ customerName: '', amount: '', items: '', paymentMethod: 'cash' });
+      setIsEditDialogOpen(false);
+      setEditingSale(null);
+      
+      toast({
+        title: "Sale Updated",
+        description: `Sale updated successfully`,
+      });
+
+      await fetchSales();
+    } catch (error) {
+      console.error('Error updating sale:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update sale",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteSale = (id: string) => {
-    setSales(prev => prev.filter(sale => sale.id !== id));
-    toast({
-      title: "Sale Deleted",
-      description: "Sale removed successfully",
-    });
+  const handleDeleteSale = async (id: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('Sales')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sale Deleted",
+        description: "Sale removed successfully",
+      });
+
+      await fetchSales();
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete sale",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
   const todaySales = sales.filter(sale => 
     sale.date.toDateString() === new Date().toDateString()
   ).reduce((sum, sale) => sum + sale.amount, 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

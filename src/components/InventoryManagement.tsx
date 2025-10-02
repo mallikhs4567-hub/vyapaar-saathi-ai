@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Package, AlertTriangle, Minus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Minus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface InventoryItem {
@@ -21,40 +23,9 @@ interface InventoryItem {
 
 export const InventoryManagement = () => {
   const { t } = useLanguage();
-  const [inventory, setInventory] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      name: 'Hair Clipper Blades',
-      quantity: 5,
-      minStock: 10,
-      price: 250,
-      category: 'Equipment'
-    },
-    {
-      id: '2', 
-      name: 'Shampoo Bottles',
-      quantity: 8,
-      minStock: 5,
-      price: 150,
-      category: 'Products'
-    },
-    {
-      id: '3',
-      name: 'Beard Oil',
-      quantity: 3,
-      minStock: 8,
-      price: 300,
-      category: 'Products'
-    },
-    {
-      id: '4',
-      name: 'Hair Gel',
-      quantity: 12,
-      minStock: 6,
-      price: 180,
-      category: 'Products'
-    }
-  ]);
+  const { user } = useAuth();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newItem, setNewItem] = useState({
     name: '',
@@ -68,8 +39,50 @@ export const InventoryManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
-  const handleAddItem = () => {
-    if (!newItem.name || !newItem.quantity || !newItem.price) {
+  // Fetch inventory data
+  useEffect(() => {
+    if (user) {
+      fetchInventory();
+    }
+  }, [user]);
+
+  const fetchInventory = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('Inventory')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('Item_name', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedInventory: InventoryItem[] = (data || []).map(item => ({
+        id: item.id,
+        name: item.Item_name || '',
+        quantity: Number(item['Stock quantity']) || 0,
+        minStock: 5,
+        price: Number(item.Price_per_unit) || 0,
+        category: item.Category || 'Products'
+      }));
+
+      setInventory(formattedInventory);
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load inventory data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!user || !newItem.name || !newItem.quantity || !newItem.price) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -78,31 +91,64 @@ export const InventoryManagement = () => {
       return;
     }
 
-    const item: InventoryItem = {
-      id: Date.now().toString(),
-      name: newItem.name,
-      quantity: parseInt(newItem.quantity),
-      minStock: parseInt(newItem.minStock) || 5,
-      price: parseFloat(newItem.price),
-      category: newItem.category
-    };
+    try {
+      const { error } = await supabase
+        .from('Inventory')
+        .insert({
+          user_id: user.id,
+          Item_name: newItem.name,
+          'Stock quantity': parseInt(newItem.quantity),
+          Price_per_unit: parseFloat(newItem.price),
+          Category: newItem.category
+        });
 
-    setInventory(prev => [...prev, item]);
-    setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Item Added",
-      description: `${item.name} added to inventory successfully`,
-    });
+      if (error) throw error;
+
+      setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Item Added",
+        description: `${newItem.name} added to inventory successfully`,
+      });
+
+      await fetchInventory();
+    } catch (error) {
+      console.error('Error adding item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item",
+        variant: "destructive",
+      });
+    }
   };
 
-  const updateQuantity = (id: string, change: number) => {
-    setInventory(prev => prev.map(item => 
-      item.id === id 
-        ? { ...item, quantity: Math.max(0, item.quantity + change) }
-        : item
-    ));
+  const updateQuantity = async (id: string, change: number) => {
+    if (!user) return;
+
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+
+    const newQuantity = Math.max(0, item.quantity + change);
+
+    try {
+      const { error } = await supabase
+        .from('Inventory')
+        .update({ 'Stock quantity': newQuantity })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await fetchInventory();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update quantity",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditItem = (item: InventoryItem) => {
@@ -117,8 +163,8 @@ export const InventoryManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateItem = () => {
-    if (!editingItem || !newItem.name || !newItem.quantity || !newItem.price) {
+  const handleUpdateItem = async () => {
+    if (!user || !editingItem || !newItem.name || !newItem.quantity || !newItem.price) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -127,39 +173,78 @@ export const InventoryManagement = () => {
       return;
     }
 
-    const updatedItem: InventoryItem = {
-      ...editingItem,
-      name: newItem.name,
-      quantity: parseInt(newItem.quantity),
-      minStock: parseInt(newItem.minStock) || 5,
-      price: parseFloat(newItem.price),
-      category: newItem.category
-    };
+    try {
+      const { error } = await supabase
+        .from('Inventory')
+        .update({
+          Item_name: newItem.name,
+          'Stock quantity': parseInt(newItem.quantity),
+          Price_per_unit: parseFloat(newItem.price),
+          Category: newItem.category
+        })
+        .eq('id', editingItem.id)
+        .eq('user_id', user.id);
 
-    setInventory(prev => prev.map(item => 
-      item.id === editingItem.id ? updatedItem : item
-    ));
-    
-    setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
-    setIsEditDialogOpen(false);
-    setEditingItem(null);
-    
-    toast({
-      title: "Item Updated",
-      description: `${updatedItem.name} updated successfully`,
-    });
+      if (error) throw error;
+
+      setNewItem({ name: '', quantity: '', minStock: '', price: '', category: 'Products' });
+      setIsEditDialogOpen(false);
+      setEditingItem(null);
+      
+      toast({
+        title: "Item Updated",
+        description: `${newItem.name} updated successfully`,
+      });
+
+      await fetchInventory();
+    } catch (error) {
+      console.error('Error updating item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update item",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteItem = (id: string) => {
-    setInventory(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Item Deleted",
-      description: "Item removed from inventory",
-    });
+  const handleDeleteItem = async (id: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('Inventory')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Item Deleted",
+        description: "Item removed from inventory",
+      });
+
+      await fetchInventory();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
+    }
   };
 
   const lowStockItems = inventory.filter(item => item.quantity <= item.minStock);
   const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
