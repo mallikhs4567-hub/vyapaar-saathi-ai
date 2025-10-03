@@ -93,9 +93,9 @@ export default function Dashboard() {
     // Fetch low stock items (stock quantity < 10)
     const { data: inventoryData } = await supabase
       .from('Inventory')
-      .select('Stock quantity')
+      .select('"Stock quantity"')
       .eq('user_id', user.id)
-      .lt('Stock quantity', 10);
+      .lt('"Stock quantity"', 10);
 
     const lowStockCount = inventoryData?.length || 0;
 

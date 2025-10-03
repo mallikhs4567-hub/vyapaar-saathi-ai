@@ -75,6 +75,11 @@ export const InventoryManagement = () => {
     }
   }, [user]);
 
+  // Initial fetch
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
+
   // Real-time subscription with credit saver
   const { isSubscribed } = useRealtimeSubscription({
     table: 'Inventory',
