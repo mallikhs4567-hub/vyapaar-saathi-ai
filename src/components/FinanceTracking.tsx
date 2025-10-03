@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Wallet, TrendingUp, CreditCard, ArrowUpDown, Edit, Trash2 } from 'lucide-react';
+import { Plus, Wallet, TrendingUp, CreditCard, ArrowUpDown, Edit, Trash2, Activity } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Transaction {
@@ -22,48 +25,8 @@ interface Transaction {
 
 export const FinanceTracking = () => {
   const { t } = useLanguage();
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'income',
-      amount: 450,
-      description: 'Customer Payment - राजेश कुमार',
-      category: 'Sales',
-      date: new Date('2024-01-15')
-    },
-    {
-      id: '2',
-      type: 'expense',
-      amount: 200,
-      description: 'Hair Clipper Blades Purchase',
-      category: 'Inventory',
-      date: new Date('2024-01-14')
-    },
-    {
-      id: '3',
-      type: 'income',
-      amount: 650,
-      description: 'Customer Payment - अमित पटेल',
-      category: 'Sales',
-      date: new Date('2024-01-14')
-    },
-    {
-      id: '4',
-      type: 'expense',
-      amount: 1200,
-      description: 'Shop Rent',
-      category: 'Rent',
-      date: new Date('2024-01-13')
-    },
-    {
-      id: '5',
-      type: 'expense',
-      amount: 300,
-      description: 'Electricity Bill',
-      category: 'Utilities',
-      date: new Date('2024-01-12')
-    }
-  ]);
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [newTransaction, setNewTransaction] = useState({
     type: 'expense' as 'income' | 'expense',
@@ -76,8 +39,46 @@ export const FinanceTracking = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  const handleAddTransaction = () => {
-    if (!newTransaction.amount || !newTransaction.description) {
+  const fetchTransactions = useCallback(async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('finance')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching transactions:', error);
+      return;
+    }
+
+    if (data) {
+      setTransactions(data.map(t => ({
+        id: t.id,
+        type: t.type as 'income' | 'expense',
+        amount: Number(t.amount),
+        description: t.description,
+        category: t.category,
+        date: new Date(t.date)
+      })));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  const { isSubscribed } = useRealtimeSubscription({
+    table: 'finance',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: fetchTransactions,
+    throttleMs: 2000,
+  });
+
+  const handleAddTransaction = async () => {
+    if (!newTransaction.amount || !newTransaction.description || !user) {
       toast({
         title: "Error",
         description: "Please fill in amount and description",
@@ -86,22 +87,31 @@ export const FinanceTracking = () => {
       return;
     }
 
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      type: newTransaction.type,
-      amount: parseFloat(newTransaction.amount),
-      description: newTransaction.description,
-      category: newTransaction.category || (newTransaction.type === 'income' ? 'Sales' : 'Other'),
-      date: new Date()
-    };
+    const { error } = await supabase
+      .from('finance')
+      .insert({
+        user_id: user.id,
+        type: newTransaction.type,
+        amount: parseFloat(newTransaction.amount),
+        description: newTransaction.description,
+        category: newTransaction.category || (newTransaction.type === 'income' ? 'Sales' : 'Other'),
+      });
 
-    setTransactions(prev => [transaction, ...prev]);
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add transaction",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setNewTransaction({ type: 'expense', amount: '', description: '', category: '' });
     setIsAddDialogOpen(false);
     
     toast({
       title: "Transaction Added",
-      description: `${transaction.type === 'income' ? 'Income' : 'Expense'} of ₹${transaction.amount} recorded`,
+      description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ₹${newTransaction.amount} recorded`,
     });
   };
 
@@ -116,7 +126,7 @@ export const FinanceTracking = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateTransaction = () => {
+  const handleUpdateTransaction = async () => {
     if (!editingTransaction || !newTransaction.amount || !newTransaction.description) {
       toast({
         title: "Error",
@@ -126,17 +136,24 @@ export const FinanceTracking = () => {
       return;
     }
 
-    const updatedTransaction: Transaction = {
-      ...editingTransaction,
-      type: newTransaction.type,
-      amount: parseFloat(newTransaction.amount),
-      description: newTransaction.description,
-      category: newTransaction.category || (newTransaction.type === 'income' ? 'Sales' : 'Other')
-    };
+    const { error } = await supabase
+      .from('finance')
+      .update({
+        type: newTransaction.type,
+        amount: parseFloat(newTransaction.amount),
+        description: newTransaction.description,
+        category: newTransaction.category || (newTransaction.type === 'income' ? 'Sales' : 'Other'),
+      })
+      .eq('id', editingTransaction.id);
 
-    setTransactions(prev => prev.map(transaction => 
-      transaction.id === editingTransaction.id ? updatedTransaction : transaction
-    ));
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update transaction",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setNewTransaction({ type: 'expense', amount: '', description: '', category: '' });
     setIsEditDialogOpen(false);
@@ -148,8 +165,21 @@ export const FinanceTracking = () => {
     });
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+  const handleDeleteTransaction = async (id: string) => {
+    const { error } = await supabase
+      .from('finance')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete transaction",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Transaction Deleted",
       description: "Transaction removed successfully",
@@ -229,7 +259,15 @@ export const FinanceTracking = () => {
         <TabsContent value="transactions" className="space-y-4">
           {/* Add Transaction Button */}
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Recent Transactions</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">Recent Transactions</h3>
+              <div className="flex items-center gap-1 text-xs">
+                <Activity className={`h-3 w-3 ${isSubscribed ? 'text-green-600 animate-pulse' : 'text-muted-foreground'}`} />
+                <span className={isSubscribed ? 'text-green-600' : 'text-muted-foreground'}>
+                  {isSubscribed ? 'Live' : 'Offline'}
+                </span>
+              </div>
+            </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>

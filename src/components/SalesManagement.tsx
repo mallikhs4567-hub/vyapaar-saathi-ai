@@ -52,7 +52,7 @@ export const SalesManagement = () => {
       const { data, error } = await supabase
         .from('Sales')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('User_id', user.id)
         .order('Date', { ascending: false });
 
       if (error) throw error;
@@ -69,15 +69,15 @@ export const SalesManagement = () => {
       setSales(formattedSales);
     } catch (error) {
       console.error('Error fetching sales:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load sales data",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSales();
+  }, [fetchSales]);
 
   // Real-time subscription with credit saver
   const { isSubscribed } = useRealtimeSubscription({
@@ -162,7 +162,7 @@ export const SalesManagement = () => {
           Product: newSale.items
         })
         .eq('id', editingSale.id)
-        .eq('user_id', user.id);
+        .eq('User_id', user.id);
 
       if (error) throw error;
 
@@ -194,7 +194,7 @@ export const SalesManagement = () => {
         .from('Sales')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('User_id', user.id);
 
       if (error) throw error;
 

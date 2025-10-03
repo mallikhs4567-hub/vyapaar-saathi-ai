@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string
+          id: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          date?: string
+          description: string
+          id?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       Inventory: {
         Row: {
           Category: string | null
@@ -77,29 +113,40 @@ export type Database = {
           Customer_name: string | null
           Date: string | null
           id: string
+          Inventory_id: string | null
           Product: string | null
           Quantity: number | null
-          user_id: string | null
+          User_id: string | null
         }
         Insert: {
           Amount?: number | null
           Customer_name?: string | null
           Date?: string | null
           id?: string
+          Inventory_id?: string | null
           Product?: string | null
           Quantity?: number | null
-          user_id?: string | null
+          User_id?: string | null
         }
         Update: {
           Amount?: number | null
           Customer_name?: string | null
           Date?: string | null
           id?: string
+          Inventory_id?: string | null
           Product?: string | null
           Quantity?: number | null
-          user_id?: string | null
+          User_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Sales_Inventory_id_fkey"
+            columns: ["Inventory_id"]
+            isOneToOne: false
+            referencedRelation: "Inventory"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Users: {
         Row: {

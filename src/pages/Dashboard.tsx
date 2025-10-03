@@ -1,8 +1,9 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { DashboardCard } from '@/components/DashboardCard';
 import { AIAssistant } from '@/components/AIAssistant';
 import { SalesManagement } from '@/components/SalesManagement';
@@ -34,6 +35,12 @@ export default function Dashboard() {
   const businessType = searchParams.get('businessType') || 'general';
   const [showGreeting, setShowGreeting] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    todaySales: 0,
+    totalRevenue: 0,
+    lowStockCount: 0,
+    pendingPayments: 0,
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -59,6 +66,84 @@ export default function Dashboard() {
       setProfile(data);
     }
   };
+
+  const fetchDashboardStats = useCallback(async () => {
+    if (!user) return;
+
+    // Fetch today's sales
+    const today = new Date().toISOString().split('T')[0];
+    const { data: salesData } = await supabase
+      .from('Sales')
+      .select('Amount')
+      .eq('User_id', user.id)
+      .eq('Date', today);
+
+    const todaySales = salesData?.reduce((sum, sale) => sum + Number(sale.Amount || 0), 0) || 0;
+
+    // Fetch total revenue from finance
+    const { data: financeData } = await supabase
+      .from('finance')
+      .select('amount, type')
+      .eq('user_id', user.id);
+
+    const totalRevenue = financeData?.reduce((sum, record) => {
+      return record.type === 'income' ? sum + Number(record.amount || 0) : sum;
+    }, 0) || 0;
+
+    // Fetch low stock items (stock quantity < 10)
+    const { data: inventoryData } = await supabase
+      .from('Inventory')
+      .select('Stock quantity')
+      .eq('user_id', user.id)
+      .lt('Stock quantity', 10);
+
+    const lowStockCount = inventoryData?.length || 0;
+
+    // Fetch pending payments from finance (expenses not paid)
+    const { data: expensesData } = await supabase
+      .from('finance')
+      .select('amount')
+      .eq('user_id', user.id)
+      .eq('type', 'expense');
+
+    const pendingPayments = expensesData?.reduce((sum, expense) => sum + Number(expense.amount || 0), 0) || 0;
+
+    setDashboardStats({
+      todaySales,
+      totalRevenue,
+      lowStockCount,
+      pendingPayments,
+    });
+  }, [user]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  // Subscribe to all tables for dashboard updates
+  useRealtimeSubscription({
+    table: 'Sales',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: fetchDashboardStats,
+    throttleMs: 5000,
+  });
+
+  useRealtimeSubscription({
+    table: 'Inventory',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: fetchDashboardStats,
+    throttleMs: 5000,
+  });
+
+  useRealtimeSubscription({
+    table: 'finance',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: fetchDashboardStats,
+    throttleMs: 5000,
+  });
 
   const handleSignOut = async () => {
     try {
@@ -153,32 +238,32 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <DashboardCard
                 title={t('todaySales')}
-                value="₹12,450"
+                value={`₹${dashboardStats.todaySales.toLocaleString()}`}
                 icon={DollarSign}
-                trend="+12.5% from yesterday"
-                trendUp={true}
+                trend="Today's total"
+                trendUp={dashboardStats.todaySales > 0}
                 onClick={() => switchToTab('sales')}
               />
               <DashboardCard
                 title={t('totalRevenue')}
-                value="₹3,45,600"
+                value={`₹${dashboardStats.totalRevenue.toLocaleString()}`}
                 icon={TrendingUp}
-                trend="+8.2% this month"
-                trendUp={true}
+                trend="Total income"
+                trendUp={dashboardStats.totalRevenue > 0}
                 onClick={() => switchToTab('finance')}
               />
               <DashboardCard
                 title={t('lowStock')}
-                value="5"
+                value={dashboardStats.lowStockCount.toString()}
                 icon={AlertCircle}
                 trend="Items need restocking"
                 onClick={() => switchToTab('inventory')}
               />
               <DashboardCard
                 title={t('pendingPayments')}
-                value="₹8,900"
+                value={`₹${dashboardStats.pendingPayments.toLocaleString()}`}
                 icon={Package}
-                trend="3 pending invoices"
+                trend="Total expenses"
                 onClick={() => switchToTab('finance')}
               />
             </div>
