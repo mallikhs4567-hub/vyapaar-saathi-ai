@@ -103,7 +103,7 @@ export const SalesManagement = () => {
       const { error } = await supabase
         .from('Sales')
         .insert({
-          user_id: user.id,
+          User_id: user.id,
           Customer_name: newSale.customerName,
           Amount: parseFloat(newSale.amount),
           Product: newSale.items,
