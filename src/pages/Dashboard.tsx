@@ -1,5 +1,5 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,12 +35,58 @@ export default function Dashboard() {
   const businessType = searchParams.get('businessType') || 'general';
   const [showGreeting, setShowGreeting] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
   const [dashboardStats, setDashboardStats] = useState({
     todaySales: 0,
     totalRevenue: 0,
     lowStockCount: 0,
     pendingPayments: 0,
   });
+
+  const tabs = ['dashboard', 'sales', 'inventory', 'finance', 'promote'];
+
+  const handleSwipe = () => {
+    const swipeDistance = touchEndX.current - touchStartX.current;
+    const threshold = 50;
+
+    if (Math.abs(swipeDistance) < threshold) return;
+
+    const currentIndex = tabs.indexOf(activeTab);
+
+    if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
+      // Swipe left - go to next tab
+      setActiveTab(tabs[currentIndex + 1]);
+    } else if (swipeDistance > 0 && currentIndex > 0) {
+      // Swipe right - go to previous tab
+      setActiveTab(tabs[currentIndex - 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      touchEndX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = () => {
+      handleSwipe();
+    };
+
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -226,7 +272,7 @@ export default function Dashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-4 md:py-6">
-        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
           <TabsList className="grid w-full grid-cols-5 h-auto">
             <TabsTrigger value="dashboard" className="text-xs md:text-sm py-2 px-1 md:px-3">
               <Home className="h-4 w-4 md:hidden" />
