@@ -185,44 +185,69 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+        <div className="container mx-auto px-4 py-3 md:py-4">
+          <div className="flex justify-between items-center gap-2">
+            {/* Logo and Title - Mobile optimized */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-bold text-primary-foreground">VS</span>
               </div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {profile?.shop_name || 'Vyapaar Saathi AI'}
-              </h1>
+              <div className="flex flex-col min-w-0">
+                <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
+                  {profile?.shop_name || 'Vyapaar Saathi AI'}
+                </h1>
+                {profile?.shop_category && (
+                  <span className="text-xs md:hidden text-muted-foreground truncate">
+                    {profile.shop_category}
+                  </span>
+                )}
+              </div>
+              {profile?.shop_category && (
+                <span className="hidden md:inline-flex px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm flex-shrink-0">
+                  {profile.shop_category}
+                </span>
+              )}
             </div>
-            {profile?.shop_category && (
-              <span className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm">
-                {profile.shop_category}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <LanguageSelector />
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="text-sm">{profile?.full_name || user.email}</span>
+
+            {/* Right side - Mobile optimized */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <LanguageSelector />
+              <div className="hidden sm:flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="text-sm truncate max-w-[120px]">{profile?.full_name || user.email}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="px-2 md:px-4">
+                <LogOut className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Sign Out</span>
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard">{t('dashboard')}</TabsTrigger>
-            <TabsTrigger value="sales">{t('sales')}</TabsTrigger>
-            <TabsTrigger value="inventory">{t('inventory')}</TabsTrigger>
-            <TabsTrigger value="finance">{t('finance')}</TabsTrigger>
-            <TabsTrigger value="promote">{t('promote')}</TabsTrigger>
+      <div className="container mx-auto px-4 py-4 md:py-6">
+        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="dashboard" className="text-xs md:text-sm py-2 px-1 md:px-3">
+              <Home className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">{t('dashboard')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="text-xs md:text-sm py-2 px-1 md:px-3">
+              <DollarSign className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">{t('sales')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="text-xs md:text-sm py-2 px-1 md:px-3">
+              <Package className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">{t('inventory')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="finance" className="text-xs md:text-sm py-2 px-1 md:px-3">
+              <Wallet className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">{t('finance')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="promote" className="text-xs md:text-sm py-2 px-1 md:px-3">
+              <Share2 className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">{t('promote')}</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -235,7 +260,7 @@ export default function Dashboard() {
             )}
             
             {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
               <DashboardCard
                 title={t('todaySales')}
                 value={`₹${dashboardStats.todaySales.toLocaleString()}`}
@@ -269,42 +294,42 @@ export default function Dashboard() {
             </div>
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <AIAssistant />
-              <div className="space-y-6">
-                <div className="p-6 border rounded-lg bg-card">
-                  <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 md:space-y-6">
+                <div className="p-4 md:p-6 border rounded-lg bg-card">
+                  <h3 className="text-base md:text-lg font-semibold mb-4 text-foreground">Quick Actions</h3>
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
                     <Button 
                       variant="outline" 
-                      className="h-20 flex flex-col items-center justify-center"
+                      className="h-16 md:h-20 flex flex-col items-center justify-center text-xs md:text-sm"
                       onClick={() => switchToTab('finance')}
                     >
-                      <BarChart3 className="h-6 w-6 mb-2" />
+                      <BarChart3 className="h-5 w-5 md:h-6 md:w-6 mb-1 md:mb-2" />
                       View Reports
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="h-20 flex flex-col items-center justify-center"
+                      className="h-16 md:h-20 flex flex-col items-center justify-center text-xs md:text-sm"
                       onClick={() => switchToTab('promote')}
                     >
-                      <Share2 className="h-6 w-6 mb-2" />
+                      <Share2 className="h-5 w-5 md:h-6 md:w-6 mb-1 md:mb-2" />
                       Share Business
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="h-20 flex flex-col items-center justify-center"
+                      className="h-16 md:h-20 flex flex-col items-center justify-center text-xs md:text-sm"
                       onClick={() => switchToTab('inventory')}
                     >
-                      <Package className="h-6 w-6 mb-2" />
+                      <Package className="h-5 w-5 md:h-6 md:w-6 mb-1 md:mb-2" />
                       Add Inventory
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="h-20 flex flex-col items-center justify-center"
+                      className="h-16 md:h-20 flex flex-col items-center justify-center text-xs md:text-sm"
                       onClick={() => switchToTab('sales')}
                     >
-                      <Wallet className="h-6 w-6 mb-2" />
+                      <Wallet className="h-5 w-5 md:h-6 md:w-6 mb-1 md:mb-2" />
                       Record Sale
                     </Button>
                   </div>
