@@ -70,24 +70,27 @@ export default function Dashboard() {
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
+      e.stopPropagation();
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       touchEndX.current = e.touches[0].clientX;
+      e.stopPropagation();
     };
 
-    const handleTouchEnd = () => {
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.stopPropagation();
       handleSwipe();
     };
 
-    document.addEventListener('touchstart', handleTouchStart);
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchstart', handleTouchStart, { capture: true });
+    document.addEventListener('touchmove', handleTouchMove, { capture: true });
+    document.addEventListener('touchend', handleTouchEnd, { capture: true });
 
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
+      document.removeEventListener('touchend', handleTouchEnd, { capture: true });
     };
   }, [activeTab]);
 
