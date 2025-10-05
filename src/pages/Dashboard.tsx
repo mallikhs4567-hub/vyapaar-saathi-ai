@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [showGreeting, setShowGreeting] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   const [dashboardStats, setDashboardStats] = useState({
@@ -57,10 +58,12 @@ export default function Dashboard() {
 
     if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
       // Swipe left - go to next tab
-      setActiveTab(tabs[currentIndex + 1]);
+      setSwipeDirection('left');
+      setTimeout(() => setActiveTab(tabs[currentIndex + 1]), 0);
     } else if (swipeDistance > 0 && currentIndex > 0) {
       // Swipe right - go to previous tab
-      setActiveTab(tabs[currentIndex - 1]);
+      setSwipeDirection('right');
+      setTimeout(() => setActiveTab(tabs[currentIndex - 1]), 0);
     }
   };
 
@@ -296,7 +299,13 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-6">
+          <TabsContent 
+            value="dashboard" 
+            className="space-y-6"
+            style={{
+              animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
+            }}
+          >
             {/* Greeting Message */}
             {showGreeting && (
               <GreetingMessage 
@@ -384,19 +393,39 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="sales">
+          <TabsContent 
+            value="sales"
+            style={{
+              animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
+            }}
+          >
             <SalesManagement />
           </TabsContent>
 
-          <TabsContent value="inventory">
+          <TabsContent 
+            value="inventory"
+            style={{
+              animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
+            }}
+          >
             <InventoryManagement />
           </TabsContent>
 
-          <TabsContent value="finance">
+          <TabsContent 
+            value="finance"
+            style={{
+              animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
+            }}
+          >
             <FinanceTracking />
           </TabsContent>
 
-          <TabsContent value="promote">
+          <TabsContent 
+            value="promote"
+            style={{
+              animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
+            }}
+          >
             <PromotionTools />
           </TabsContent>
         </Tabs>
