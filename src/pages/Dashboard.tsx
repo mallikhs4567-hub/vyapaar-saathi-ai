@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { DashboardCard } from '@/components/DashboardCard';
 import { AIAssistant } from '@/components/AIAssistant';
+import { AIInsights } from '@/components/AIInsights';
 import { SalesManagement } from '@/components/SalesManagement';
 import { InventoryManagement } from '@/components/InventoryManagement';
 import { FinanceTracking } from '@/components/FinanceTracking';
@@ -352,6 +353,9 @@ export default function Dashboard() {
               />
             </div>
 
+            {/* AI Insights */}
+            <AIInsights section="dashboard" />
+
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <AIAssistant />
@@ -399,28 +403,34 @@ export default function Dashboard() {
 
           <TabsContent 
             value="sales"
+            className="space-y-4"
             style={{
               animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
             }}
           >
+            <AIInsights section="sales" />
             <SalesManagement />
           </TabsContent>
 
           <TabsContent 
             value="inventory"
+            className="space-y-4"
             style={{
               animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
             }}
           >
+            <AIInsights section="inventory" />
             <InventoryManagement />
           </TabsContent>
 
           <TabsContent 
             value="finance"
+            className="space-y-4"
             style={{
               animation: swipeDirection === 'left' ? 'slide-in-right 0.3s ease-out' : swipeDirection === 'right' ? 'slide-in-left 0.3s ease-out' : 'none'
             }}
           >
+            <AIInsights section="finance" />
             <FinanceTracking />
           </TabsContent>
 
