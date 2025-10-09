@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PageTransition } from "@/components/PageTransition";
-import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
@@ -15,8 +14,6 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  useSwipeNavigation({ threshold: 75, enabled: true });
-  
   return (
     <Routes>
       <Route path="/" element={<PageTransition><Index /></PageTransition>} />
