@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [dashboardStats, setDashboardStats] = useState({
     todaySales: 0,
     totalRevenue: 0,
@@ -68,29 +69,29 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
-      e.stopPropagation();
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       touchEndX.current = e.touches[0].clientX;
-      e.stopPropagation();
     };
 
-    const handleTouchEnd = (e: TouchEvent) => {
-      e.stopPropagation();
+    const handleTouchEnd = () => {
       handleSwipe();
     };
 
-    document.addEventListener('touchstart', handleTouchStart, { capture: true });
-    document.addEventListener('touchmove', handleTouchMove, { capture: true });
-    document.addEventListener('touchend', handleTouchEnd, { capture: true });
+    el.addEventListener('touchstart', handleTouchStart);
+    el.addEventListener('touchmove', handleTouchMove);
+    el.addEventListener('touchend', handleTouchEnd);
 
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart, { capture: true });
-      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
-      document.removeEventListener('touchend', handleTouchEnd, { capture: true });
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
     };
   }, [activeTab]);
 
@@ -234,7 +235,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={containerRef} className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 md:py-4">
