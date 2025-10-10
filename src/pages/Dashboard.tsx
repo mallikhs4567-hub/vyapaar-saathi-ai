@@ -52,7 +52,15 @@ export default function Dashboard() {
 
   const handleSwipe = () => {
     const swipeDistance = touchEndX.current - touchStartX.current;
-    const threshold = 50;
+    const threshold = 80; // Increased threshold to ignore clicks/taps
+    const minimumSwipeDistance = 50; // Minimum distance to be considered a swipe
+
+    // If barely moved, it's a click/tap, not a swipe
+    if (Math.abs(swipeDistance) < minimumSwipeDistance) {
+      touchStartX.current = 0;
+      touchEndX.current = 0;
+      return;
+    }
 
     if (Math.abs(swipeDistance) < threshold) return;
 
@@ -67,6 +75,10 @@ export default function Dashboard() {
       setSwipeDirection('right');
       setTimeout(() => setActiveTab(tabs[currentIndex - 1]), 0);
     }
+
+    // Reset touch positions
+    touchStartX.current = 0;
+    touchEndX.current = 0;
   };
 
   useEffect(() => {
