@@ -344,7 +344,7 @@ export const SalesManagement = () => {
                   ))}
                 </div>
               </div>
-              <Button onClick={handleAddSale} className="w-full">
+              <Button onClick={handleAddSale} className="w-full" type="button">
                 Record Sale
               </Button>
             </div>

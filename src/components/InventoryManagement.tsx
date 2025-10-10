@@ -406,7 +406,7 @@ export const InventoryManagement = () => {
                   ))}
                 </div>
               </div>
-              <Button onClick={handleAddItem} className="w-full">
+              <Button onClick={handleAddItem} className="w-full" type="button">
                 Add Item
               </Button>
             </div>

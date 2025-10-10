@@ -327,7 +327,7 @@ export const FinanceTracking = () => {
                       placeholder={newTransaction.type === 'income' ? 'e.g., Sales' : 'e.g., Rent, Utilities'}
                     />
                   </div>
-                  <Button onClick={handleAddTransaction} className="w-full">
+                  <Button onClick={handleAddTransaction} className="w-full" type="button">
                     Add Transaction
                   </Button>
                 </div>
