@@ -6,9 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, Share2, Camera, Hash, Sparkles } from 'lucide-react';
+import { Download, Share2, Camera, Hash, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SocialPostCreatorProps {
   businessData: {
@@ -29,6 +30,7 @@ export const SocialPostCreator = ({ businessData }: SocialPostCreatorProps) => {
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
 
   const platforms = [
@@ -63,56 +65,43 @@ export const SocialPostCreator = ({ businessData }: SocialPostCreatorProps) => {
     setHashtags(prev => prev.filter(t => t !== tag));
   };
 
-  const generateAIContent = () => {
-    const templates_content = {
-      offer: {
-        title: `🎉 Special Offer at ${businessData.name}!`,
-        description: `Don't miss out on our amazing deals! Limited time only.`,
-        offerText: `50% OFF on selected items`
-      },
-      announcement: {
-        title: `📢 Exciting News from ${businessData.name}!`,
-        description: `We're thrilled to share something special with our valued customers.`,
-        offerText: ``
-      },
-      testimonial: {
-        title: `⭐ What Our Customers Say`,
-        description: `"Amazing service and quality! Highly recommended!" - Happy Customer`,
-        offerText: ``
-      },
-      'behind-scenes': {
-        title: `🎬 Behind the Scenes at ${businessData.name}`,
-        description: `Take a peek at how we create quality products/services for you!`,
-        offerText: ``
-      },
-      tips: {
-        title: `💡 Pro Tips from ${businessData.name}`,
-        description: `Here's a helpful tip from our experts to make your day better!`,
-        offerText: ``
-      },
-      event: {
-        title: `📅 Join Us for a Special Event!`,
-        description: `Mark your calendars! We're hosting an exciting event for our community.`,
-        offerText: `Register now!`
-      }
-    };
+  const generateAIContent = async () => {
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-social-post', {
+        body: {
+          businessName: businessData.name,
+          category: businessData.category,
+          template: postData.template,
+          platform: postData.platform
+        }
+      });
 
-    const content = templates_content[postData.template as keyof typeof templates_content];
-    setPostData(prev => ({
-      ...prev,
-      title: content.title,
-      description: content.description,
-      offerText: content.offerText
-    }));
+      if (error) throw error;
 
-    // Add relevant hashtags
-    const categoryHashtags = businessData.category ? [`#${businessData.category.toLowerCase()}`] : [];
-    setHashtags(prev => [...new Set([...prev, ...categoryHashtags, '#local', '#business'])]);
+      setPostData(prev => ({
+        ...prev,
+        title: data.title,
+        description: data.description,
+        offerText: data.offerText || ''
+      }));
 
-    toast({
-      title: "Content Generated",
-      description: "AI-generated content has been added to your post",
-    });
+      setHashtags(data.hashtags || []);
+
+      toast({
+        title: "Content Generated",
+        description: "AI-generated content has been added to your post",
+      });
+    } catch (error: any) {
+      console.error('Generate content error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate AI content",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getPostDimensions = () => {
@@ -237,9 +226,9 @@ export const SocialPostCreator = ({ businessData }: SocialPostCreatorProps) => {
             </div>
           </div>
 
-          <Button onClick={generateAIContent} variant="outline" className="w-full">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Generate AI Content
+          <Button onClick={generateAIContent} variant="outline" className="w-full" disabled={isGenerating}>
+            {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+            {isGenerating ? 'Generating...' : 'Generate AI Content'}
           </Button>
 
           <div>

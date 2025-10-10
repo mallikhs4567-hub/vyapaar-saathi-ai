@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bot, User, HelpCircle } from 'lucide-react';
+import { Send, Bot, User, HelpCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -28,6 +30,7 @@ export const AIAssistant = () => {
     },
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const businessFAQs = {
     grocery: [
@@ -143,8 +146,8 @@ export const AIAssistant = () => {
     return `I'm here to help you succeed in your ${businessType} business! I can provide specific advice on:\n\n💼 **Business Operations**: Day-to-day management, efficiency tips\n💰 **Financial Management**: Profit optimization, cost control\n📈 **Sales Growth**: Customer acquisition and retention strategies\n📦 **Inventory**: Stock management and procurement\n🎯 **Marketing**: Local advertising and customer engagement\n⚠️ **Problem Solving**: Specific challenges you're facing\n\nWhat would you like to focus on? The more specific your question, the better advice I can give you!`;
   };
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -156,20 +159,37 @@ export const AIAssistant = () => {
     setMessages(prev => [...prev, userMessage]);
     const currentQuery = inputValue;
     setInputValue('');
+    setIsLoading(true);
 
-    // AI response with business-specific logic
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chatbot', {
+        body: { message: currentQuery, businessType }
+      });
+
+      if (error) throw error;
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: getAIResponse(currentQuery),
+        content: data.message || 'Sorry, I could not generate a response.',
         isUser: false,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    } catch (error: any) {
+      console.error('Chatbot error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFAQClick = (faq: string) => {
+  const handleFAQClick = async (faq: string) => {
+    if (isLoading) return;
+    
     const userMessage: Message = {
       id: Date.now().toString(),
       content: faq,
@@ -178,16 +198,32 @@ export const AIAssistant = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chatbot', {
+        body: { message: faq, businessType }
+      });
+
+      if (error) throw error;
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: getAIResponse(faq),
+        content: data.message || 'Sorry, I could not generate a response.',
         isUser: false,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
-    }, 800);
+    } catch (error: any) {
+      console.error('Chatbot error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -256,8 +292,8 @@ export const AIAssistant = () => {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           />
-          <Button onClick={handleSendMessage} size="icon">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendMessage} size="icon" disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
       </CardContent>

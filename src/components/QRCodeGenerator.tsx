@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import QRCode from 'qrcode';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QRCodeGeneratorProps {
   businessData: {
@@ -25,6 +26,7 @@ export const QRCodeGenerator = ({ businessData }: QRCodeGeneratorProps) => {
     customText: ''
   });
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const generateVCard = () => {
@@ -105,6 +107,49 @@ END:VCARD`;
     link.click();
   };
 
+  const generateAIContent = async () => {
+    if (qrData.type !== 'whatsapp' && qrData.type !== 'custom') {
+      toast({
+        title: "Not Available",
+        description: "AI content generation is only available for WhatsApp and Custom QR codes",
+      });
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-qr-content', {
+        body: {
+          businessName: businessData.name,
+          category: businessData.name,
+          qrType: qrData.type
+        }
+      });
+
+      if (error) throw error;
+
+      if (qrData.type === 'whatsapp') {
+        setQrData(prev => ({ ...prev, customText: data.content }));
+      } else {
+        setQrData(prev => ({ ...prev, content: data.content }));
+      }
+
+      toast({
+        title: "Content Generated",
+        description: "AI-generated content has been added",
+      });
+    } catch (error: any) {
+      console.error('Generate content error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate AI content",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   const shareQRCode = async () => {
     if (!qrCodeUrl) return;
 
@@ -157,6 +202,13 @@ END:VCARD`;
               ))}
             </div>
           </div>
+
+          {(qrData.type === 'whatsapp' || qrData.type === 'custom') && (
+            <Button onClick={generateAIContent} variant="outline" className="w-full" disabled={isGeneratingContent}>
+              {isGeneratingContent ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+              {isGeneratingContent ? 'Generating...' : 'Generate AI Content'}
+            </Button>
+          )}
 
           {qrData.type === 'whatsapp' && (
             <div>
