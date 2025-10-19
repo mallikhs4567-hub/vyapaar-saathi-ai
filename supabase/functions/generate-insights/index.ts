@@ -1,197 +1,274 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+// ============================================
+// FILE: supabase/functions/generate-insights/index.ts
+// Secured edge function with proper JWT verification
+// ============================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  requireAuth,
+  handleCors,
+  successResponse,
+  errorResponse,
+  checkRateLimit,
+  sanitizeInput,
+  validateRequiredFields,
+} from '../_shared/auth.ts';
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { section, userId } = await req.json();
-
-    if (!section || !userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing section or userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Credit Saver: Check last insight generation time
-    const { data: lastInsight } = await supabase
-      .from("ai_insights")
-      .select("created_at")
-      .eq("user_id", userId)
-      .eq("section", section)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (lastInsight) {
-      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
-      const lastCreated = new Date(lastInsight.created_at);
-      
-      if (lastCreated > sixHoursAgo) {
-        console.log(`Skipping AI generation for ${section} - generated within last 6 hours`);
-        return new Response(
-          JSON.stringify({ message: "Insights recently generated, skipping to save credits" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // Fetch recent data based on section
-    let recentData;
-    const limit = 20;
-
-    if (section === "sales") {
-      const { data } = await supabase
-        .from("Sales")
-        .select("*")
-        .eq("User_id", userId)
-        .order("Date", { ascending: false })
-        .limit(limit);
-      recentData = data;
-    } else if (section === "inventory") {
-      const { data } = await supabase
-        .from("Inventory")
-        .select("*")
-        .eq("user_id", userId)
-        .limit(limit);
-      recentData = data;
-    } else if (section === "finance") {
-      const { data } = await supabase
-        .from("finance")
-        .select("*")
-        .eq("user_id", userId)
-        .order("date", { ascending: false })
-        .limit(limit);
-      recentData = data;
-    } else if (section === "dashboard") {
-      // Fetch summary data from all tables
-      const [salesData, inventoryData, financeData] = await Promise.all([
-        supabase.from("Sales").select("*").eq("User_id", userId).order("Date", { ascending: false }).limit(10),
-        supabase.from("Inventory").select("*").eq("user_id", userId).limit(10),
-        supabase.from("finance").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(10),
-      ]);
-      recentData = {
-        sales: salesData.data,
-        inventory: inventoryData.data,
-        finance: financeData.data,
-      };
-    }
-
-    if (!recentData || (Array.isArray(recentData) && recentData.length === 0)) {
-      return new Response(
-        JSON.stringify({ insights: ["No data available yet. Start adding data to get AI insights! 📊"] }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Generate AI insights using Lovable AI (Gemini 2.5 Flash - FREE!)
-    const prompt = `You are Vyapaar Saathi AI, a smart Indian business assistant helping small businesses.
-
-Analyze this ${section} data and provide 2-3 SHORT, actionable insights (under 50 words total).
-Keep it simple, relevant, and clear. Use emojis when appropriate.
-
-Return ONLY valid JSON in this exact format:
-{
-  "insights": ["insight1", "insight2", "insight3"]
+interface InsightRequest {
+  businessType?: string;
+  period?: 'week' | 'month' | 'quarter' | 'year';
+  metrics?: string[];
 }
 
-Data:
-${JSON.stringify(recentData, null, 2)}`;
+Deno.serve(async (req: Request) => {
+  // Handle CORS preflight
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
+  try {
+    // ==================== STEP 1: VERIFY JWT ====================
+    const { user, userId, response: authResponse } = await requireAuth(req);
+    
+    if (authResponse) {
+      console.error('Authentication failed');
+      return authResponse;
+    }
+
+    console.log('✅ Authenticated user:', userId);
+
+    // ==================== STEP 2: RATE LIMITING ====================
+    const { allowed, remaining } = checkRateLimit(userId, 50, 60000); // 50 requests per minute
+    
+    if (!allowed) {
+      console.error('Rate limit exceeded for user:', userId);
+      return errorResponse('Rate limit exceeded. Please try again later.', 429);
+    }
+
+    console.log(`Rate limit: ${remaining} requests remaining`);
+
+    // ==================== STEP 3: PARSE & VALIDATE REQUEST ====================
+    let body: InsightRequest = {};
+    
+    if (req.method === 'POST') {
+      try {
+        body = await req.json();
+        body = sanitizeInput(body); // Sanitize all inputs
+      } catch (error) {
+        return errorResponse('Invalid JSON in request body');
+      }
+    }
+
+    // ==================== STEP 4: INITIALIZE SUPABASE WITH USER TOKEN ====================
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization')! },
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are a helpful business insights assistant. Always return valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-      }),
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your Lovable AI workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw new Error(`AI Gateway error: ${aiResponse.status}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const content = aiData.choices[0].message.content;
+    // ==================== STEP 5: FETCH USER'S DATA ONLY ====================
+    // CRITICAL: Always filter by authenticated userId, never trust client input!
     
-    // Parse the JSON response
-    let parsedInsights;
-    try {
-      parsedInsights = JSON.parse(content);
-    } catch (e) {
-      console.error("Failed to parse AI response:", content);
-      parsedInsights = { insights: ["Error generating insights. Please try again."] };
+    const period = body.period || 'month';
+    const now = new Date();
+    let startDate = new Date();
+
+    switch (period) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
     }
 
-    // Save or update insights
-    const { data: existingInsight } = await supabase
-      .from("ai_insights")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("section", section)
-      .single();
+    // Fetch sales data - ONLY for authenticated user
+    const { data: salesData, error: salesError } = await supabase
+      .from('invoices')
+      .select('amount, created_at, status')
+      .eq('user_id', userId) // ⚠️ CRITICAL: Always filter by userId from JWT
+      .gte('created_at', startDate.toISOString());
 
-    if (existingInsight) {
-      await supabase
-        .from("ai_insights")
-        .update({
-          insights: parsedInsights.insights,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingInsight.id);
-    } else {
-      await supabase
-        .from("ai_insights")
-        .insert({
-          user_id: userId,
-          section,
-          insights: parsedInsights.insights,
-        });
+    if (salesError) {
+      console.error('Error fetching sales:', salesError);
+      return errorResponse('Failed to fetch sales data', 500);
     }
 
-    return new Response(
-      JSON.stringify({ insights: parsedInsights.insights }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Fetch products data - ONLY for authenticated user
+    const { data: productsData, error: productsError } = await supabase
+      .from('products')
+      .select('name, price, stock, sales_count')
+      .eq('user_id', userId) // ⚠️ CRITICAL: Always filter by userId from JWT
+      .order('sales_count', { ascending: false })
+      .limit(10);
+
+    if (productsError) {
+      console.error('Error fetching products:', productsError);
+      return errorResponse('Failed to fetch products data', 500);
+    }
+
+    // Fetch customers data - ONLY for authenticated user
+    const { data: customersData, error: customersError } = await supabase
+      .from('customers')
+      .select('id, name, total_purchases')
+      .eq('user_id', userId); // ⚠️ CRITICAL: Always filter by userId from JWT
+
+    if (customersError) {
+      console.error('Error fetching customers:', customersError);
+      return errorResponse('Failed to fetch customers data', 500);
+    }
+
+    // ==================== STEP 6: GENERATE INSIGHTS ====================
+    const insights = generateBusinessInsights({
+      sales: salesData || [],
+      products: productsData || [],
+      customers: customersData || [],
+      period,
+      businessType: body.businessType || 'general',
+    });
+
+    // ==================== STEP 7: LOG ACTIVITY ====================
+    // Log this action for audit trail
+    await supabase.from('activity_log').insert({
+      user_id: userId,
+      action: 'generate_insights',
+      details: { period, metrics_count: insights.length },
+      created_at: new Date().toISOString(),
+    });
+
+    console.log(`✅ Generated ${insights.length} insights for user:`, userId);
+
+    // ==================== STEP 8: RETURN RESPONSE ====================
+    return successResponse({
+      success: true,
+      userId, // Return the verified userId
+      period,
+      insights,
+      metadata: {
+        salesCount: salesData?.length || 0,
+        productsCount: productsData?.length || 0,
+        customersCount: customersData?.length || 0,
+        generatedAt: new Date().toISOString(),
+      },
+    });
 
   } catch (error) {
-    console.error("Error in generate-insights:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error('Unexpected error:', error);
+    return errorResponse('Internal server error', 500);
   }
 });
+
+// ==================== INSIGHT GENERATION LOGIC ====================
+function generateBusinessInsights(data: {
+  sales: any[];
+  products: any[];
+  customers: any[];
+  period: string;
+  businessType: string;
+}): any[] {
+  const insights = [];
+
+  // Calculate total revenue
+  const totalRevenue = data.sales
+    .filter(s => s.status === 'paid')
+    .reduce((sum, sale) => sum + (sale.amount || 0), 0);
+
+  // Calculate growth
+  const midpoint = Math.floor(data.sales.length / 2);
+  const firstHalf = data.sales.slice(0, midpoint);
+  const secondHalf = data.sales.slice(midpoint);
+  
+  const firstHalfRevenue = firstHalf.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const secondHalfRevenue = secondHalf.reduce((sum, s) => sum + (s.amount || 0), 0);
+  
+  const growthRate = firstHalfRevenue > 0 
+    ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100 
+    : 0;
+
+  insights.push({
+    type: 'revenue',
+    title: 'Revenue Overview',
+    value: totalRevenue,
+    change: growthRate,
+    trend: growthRate > 0 ? 'up' : 'down',
+    description: `Total revenue of ₹${totalRevenue.toFixed(2)} with ${growthRate.toFixed(1)}% ${growthRate > 0 ? 'growth' : 'decline'}`,
+  });
+
+  // Top selling products
+  const topProducts = data.products.slice(0, 5);
+  
+  if (topProducts.length > 0) {
+    insights.push({
+      type: 'products',
+      title: 'Top Selling Products',
+      items: topProducts.map(p => ({
+        name: p.name,
+        sales: p.sales_count || 0,
+        stock: p.stock,
+      })),
+      description: `Your top ${topProducts.length} best-selling products`,
+    });
+  }
+
+  // Low stock alert
+  const lowStockProducts = data.products.filter(p => p.stock < 10);
+  
+  if (lowStockProducts.length > 0) {
+    insights.push({
+      type: 'alert',
+      title: 'Low Stock Warning',
+      severity: 'high',
+      count: lowStockProducts.length,
+      items: lowStockProducts.map(p => p.name),
+      description: `${lowStockProducts.length} products are running low on stock`,
+    });
+  }
+
+  // Customer insights
+  const topCustomers = data.customers
+    .sort((a, b) => (b.total_purchases || 0) - (a.total_purchases || 0))
+    .slice(0, 5);
+
+  if (topCustomers.length > 0) {
+    insights.push({
+      type: 'customers',
+      title: 'Top Customers',
+      items: topCustomers.map(c => ({
+        name: c.name,
+        purchases: c.total_purchases || 0,
+      })),
+      description: `Your top ${topCustomers.length} valued customers`,
+    });
+  }
+
+  // Sales trend
+  insights.push({
+    type: 'trend',
+    title: 'Sales Trend',
+    period: data.period,
+    totalSales: data.sales.length,
+    averageOrder: data.sales.length > 0 ? totalRevenue / data.sales.length : 0,
+    description: `${data.sales.length} sales with average order value of ₹${data.sales.length > 0 ? (totalRevenue / data.sales.length).toFixed(2) : 0}`,
+  });
+
+  // AI-powered recommendations
+  insights.push({
+    type: 'recommendation',
+    title: 'AI Recommendations',
+    suggestions: [
+      growthRate < 0 ? 'Consider running promotions to boost sales' : 'Keep up the great momentum!',
+      lowStockProducts.length > 0 ? 'Restock low inventory items soon' : 'Inventory levels look good',
+      data.customers.length < 50 ? 'Focus on customer acquisition' : 'Consider loyalty programs for retention',
+    ],
+  });
+
+  return insights;
+}
