@@ -4,6 +4,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 interface AIInsightsProps {
   section: "sales" | "inventory" | "finance" | "dashboard";
@@ -99,6 +100,38 @@ export const AIInsights = ({ section }: AIInsightsProps) => {
   useEffect(() => {
     fetchInsights();
   }, [user, section]);
+
+  // Subscribe to all relevant tables for instant AI insights refresh
+  useRealtimeSubscription({
+    table: 'Sales',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: () => {
+      // Force refresh insights when data changes
+      refreshInsights();
+    },
+    throttleMs: 2000, // Slightly higher throttle for AI calls
+  });
+
+  useRealtimeSubscription({
+    table: 'Inventory',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: () => {
+      refreshInsights();
+    },
+    throttleMs: 2000,
+  });
+
+  useRealtimeSubscription({
+    table: 'finance',
+    userId: user?.id,
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    onDataChange: () => {
+      refreshInsights();
+    },
+    throttleMs: 2000,
+  });
 
   if (!insights.length && !loading) return null;
 
