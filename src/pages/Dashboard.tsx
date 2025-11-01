@@ -50,63 +50,6 @@ export default function Dashboard() {
 
   const tabs = ['dashboard', 'sales', 'inventory', 'finance', 'promote'];
 
-  const handleSwipe = () => {
-    const swipeDistance = touchEndX.current - touchStartX.current;
-    const threshold = 80; // Increased threshold to ignore clicks/taps
-    const minimumSwipeDistance = 50; // Minimum distance to be considered a swipe
-
-    // If barely moved, it's a click/tap, not a swipe
-    if (Math.abs(swipeDistance) < minimumSwipeDistance) {
-      touchStartX.current = 0;
-      touchEndX.current = 0;
-      return;
-    }
-
-    if (Math.abs(swipeDistance) < threshold) return;
-
-    const currentIndex = tabs.indexOf(activeTab);
-
-    if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
-      // Swipe left - go to next tab
-      setSwipeDirection('left');
-      setTimeout(() => setActiveTab(tabs[currentIndex + 1]), 0);
-    } else if (swipeDistance > 0 && currentIndex > 0) {
-      // Swipe right - go to previous tab
-      setSwipeDirection('right');
-      setTimeout(() => setActiveTab(tabs[currentIndex - 1]), 0);
-    }
-
-    // Reset touch positions
-    touchStartX.current = 0;
-    touchEndX.current = 0;
-  };
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartX.current = e.touches[0].clientX;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      touchEndX.current = e.touches[0].clientX;
-    };
-
-    const handleTouchEnd = () => {
-      handleSwipe();
-    };
-
-    el.addEventListener('touchstart', handleTouchStart);
-    el.addEventListener('touchmove', handleTouchMove);
-    el.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchmove', handleTouchMove);
-      el.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [activeTab]);
 
   useEffect(() => {
     if (!loading && !user) {
