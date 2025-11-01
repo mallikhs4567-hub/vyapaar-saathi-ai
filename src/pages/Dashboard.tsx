@@ -135,7 +135,7 @@ export default function Dashboard() {
     userId: user?.id,
     events: ['INSERT', 'UPDATE', 'DELETE'],
     onDataChange: fetchDashboardStats,
-    throttleMs: 5000,
+    throttleMs: 500,
   });
 
   useRealtimeSubscription({
@@ -143,7 +143,7 @@ export default function Dashboard() {
     userId: user?.id,
     events: ['INSERT', 'UPDATE', 'DELETE'],
     onDataChange: fetchDashboardStats,
-    throttleMs: 5000,
+    throttleMs: 500,
   });
 
   useRealtimeSubscription({
@@ -151,7 +151,7 @@ export default function Dashboard() {
     userId: user?.id,
     events: ['INSERT', 'UPDATE', 'DELETE'],
     onDataChange: fetchDashboardStats,
-    throttleMs: 5000,
+    throttleMs: 500,
   });
 
   const handleSignOut = async () => {
