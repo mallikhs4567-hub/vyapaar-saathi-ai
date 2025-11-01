@@ -75,18 +75,20 @@ Deno.serve(async (req: Request) => {
         break;
     }
 
+    const startDateStr = startDate.toISOString().split('T')[0];
+
     const { data: salesData } = await supabase
       .from('Sales')
-      .select('amount, created_at, status')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString());
+      .select('"Amount","Date","Quantity"')
+      .eq('"User_id"', user.id)
+      .gte('"Date"', startDateStr);
 
     const { data: inventoryData } = await supabase
       .from('Inventory')
-      .select('name, price, quantity')
+      .select('"Item_name","Stock quantity","Price_per_unit","Category"')
       .eq('user_id', user.id)
-      .order('quantity', { ascending: false })
-      .limit(10);
+      .order('"Stock quantity"', { ascending: true })
+      .limit(50);
 
     const { data: financeData } = await supabase
       .from('finance')
@@ -139,24 +141,15 @@ function generateBusinessInsights(data: {
   period: string;
   businessType: string;
 }): any[] {
-  const insights = [];
+  // Calculate totals from schema-correct fields
+  const salesAmounts = data.sales.map((s: any) => Number(s["Amount"] || 0));
+  const totalRevenue = salesAmounts.reduce((sum: number, v: number) => sum + v, 0);
 
-  // Calculate total revenue
-  const totalRevenue = data.sales
-    .filter(s => s.status === 'paid')
-    .reduce((sum, sale) => sum + (sale.amount || 0), 0);
-
-  // Calculate growth
-  const midpoint = Math.floor(data.sales.length / 2);
-  const firstHalf = data.sales.slice(0, midpoint);
-  const secondHalf = data.sales.slice(midpoint);
-  
-  const firstHalfRevenue = firstHalf.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const secondHalfRevenue = secondHalf.reduce((sum, s) => sum + (s.amount || 0), 0);
-  
-  const growthRate = firstHalfRevenue > 0 
-    ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100 
-    : 0;
+  // Growth based on first vs second half of the period
+  const midpoint = Math.floor(salesAmounts.length / 2);
+  const firstHalfRevenue = salesAmounts.slice(0, midpoint).reduce((s, v) => s + v, 0);
+  const secondHalfRevenue = salesAmounts.slice(midpoint).reduce((s, v) => s + v, 0);
+  const growthRate = firstHalfRevenue > 0 ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100 : 0;
 
   insights.push({
     type: 'revenue',
@@ -167,53 +160,73 @@ function generateBusinessInsights(data: {
     description: `Total revenue of ₹${totalRevenue.toFixed(2)} with ${growthRate.toFixed(1)}% ${growthRate > 0 ? 'growth' : 'decline'}`,
   });
 
-  // Top selling products
-  const topProducts = data.products.slice(0, 5);
-  
-  if (topProducts.length > 0) {
-    insights.push({
-      type: 'products',
-      title: 'Top Selling Products',
-      items: topProducts.map(p => ({
-        name: p.name,
-        sales: p.sales_count || 0,
-        stock: p.stock,
-      })),
-      description: `Your top ${topProducts.length} best-selling products`,
-    });
-  }
-
-  const lowStockProducts = data.products.filter(p => (p.quantity || 0) < 10);
-  
+  // Low stock products using "Stock quantity"
+  const lowStockProducts = data.products.filter((p: any) => Number(p["Stock quantity"] || 0) < 10);
   if (lowStockProducts.length > 0) {
     insights.push({
       type: 'alert',
       title: 'Low Stock Warning',
       severity: 'high',
       count: lowStockProducts.length,
-      items: lowStockProducts.map(p => p.name),
+      items: lowStockProducts.map((p: any) => p["Item_name"]) as string[],
       description: `${lowStockProducts.length} products are running low on stock`,
     });
   }
 
   // Sales trend
+  const averageOrder = salesAmounts.length > 0 ? totalRevenue / salesAmounts.length : 0;
   insights.push({
     type: 'trend',
     title: 'Sales Trend',
     period: data.period,
-    totalSales: data.sales.length,
-    averageOrder: data.sales.length > 0 ? totalRevenue / data.sales.length : 0,
-    description: `${data.sales.length} sales with average order value of ₹${data.sales.length > 0 ? (totalRevenue / data.sales.length).toFixed(2) : 0}`,
+    totalSales: salesAmounts.length,
+    averageOrder,
+    description: `${salesAmounts.length} sales with average order value of ₹${averageOrder.toFixed(2)}`,
   });
 
+  // Finance-based KPIs
+  const totalIncome = data.finance.filter((f: any) => f.type === 'income').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+  const totalExpense = data.finance.filter((f: any) => f.type === 'expense').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+  const netProfit = totalIncome - totalExpense;
+
   insights.push({
-    type: 'recommendation',
-    title: 'AI Recommendations',
-    suggestions: [
-      growthRate < 0 ? 'Consider running promotions to boost sales' : 'Keep up the great momentum!',
-      lowStockProducts.length > 0 ? 'Restock low inventory items soon' : 'Inventory levels look good',
-    ],
+    type: 'finance',
+    title: 'Profitability Snapshot',
+    value: netProfit,
+    description: `Income ₹${totalIncome.toFixed(2)} − Expenses ₹${totalExpense.toFixed(2)} = Net ₹${netProfit.toFixed(2)}`,
   });
+
+  // High-value inventory focus
+  const topValue = (data.products || [])
+    .map((p: any) => ({
+      name: p["Item_name"],
+      value: Number(p["Price_per_unit"] || 0) * Number(p["Stock quantity"] || 0),
+    }))
+    .sort((a: any, b: any) => b.value - a.value)
+    .slice(0, 3);
+  if (topValue.length > 0) {
+    insights.push({
+      type: 'inventory',
+      title: 'High-Value Inventory Focus',
+      items: topValue,
+      description: 'Items contributing most to inventory value.',
+    });
+  }
+
+  // Actionable recommendations
+  const suggestions: string[] = [];
+  if (growthRate < 0) suggestions.push('Run a 10% weekday discount to recover declining growth.');
+  if (lowStockProducts.length > 0) suggestions.push(`Restock ${Math.min(lowStockProducts.length, 3)} low-stock items today to prevent lost sales.`);
+  if (netProfit < 0) suggestions.push('Reduce non-essential expenses or increase pricing on low-margin items.');
+  if (averageOrder < 200) suggestions.push('Offer bundles or free add-ons above ₹500 to lift average order value.');
+
+  if (suggestions.length > 0) {
+    insights.push({
+      type: 'recommendation',
+      title: 'AI Recommendations',
+      suggestions,
+    });
+  }
 
   return insights;
 }
