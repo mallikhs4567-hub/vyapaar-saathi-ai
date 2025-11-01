@@ -9,10 +9,21 @@ interface AIInsightsProps {
   section: "sales" | "inventory" | "finance" | "dashboard";
 }
 
+interface Insight {
+  type: string;
+  title: string;
+  description: string;
+  value?: number;
+  change?: number;
+  trend?: string;
+  items?: any[];
+  suggestions?: string[];
+}
+
 export const AIInsights = ({ section }: AIInsightsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [insights, setInsights] = useState<string[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchInsights = async () => {
@@ -29,8 +40,8 @@ export const AIInsights = ({ section }: AIInsightsProps) => {
         .limit(1)
         .maybeSingle();
 
-      if (existingInsights) {
-        setInsights(existingInsights.insights as string[]);
+      if (existingInsights && Array.isArray(existingInsights.insights)) {
+        setInsights(existingInsights.insights as unknown as Insight[]);
         
         // Check if insights are older than 6 hours
         const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
@@ -104,9 +115,20 @@ export const AIInsights = ({ section }: AIInsightsProps) => {
         {insights.map((insight, index) => (
           <div
             key={index}
-            className="text-sm text-muted-foreground bg-background/50 rounded-lg p-3 border border-primary/10"
+            className="text-sm bg-background/50 rounded-lg p-3 border border-primary/10"
           >
-            {insight}
+            <div className="font-medium text-foreground mb-1">{insight.title}</div>
+            <div className="text-muted-foreground">{insight.description}</div>
+            {insight.suggestions && insight.suggestions.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {insight.suggestions.map((suggestion, idx) => (
+                  <li key={idx} className="flex items-start gap-1">
+                    <span className="text-primary">•</span>
+                    <span>{suggestion}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </CardContent>
