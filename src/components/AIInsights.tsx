@@ -57,7 +57,7 @@ export const AIInsights = ({ section }: AIInsightsProps) => {
         await refreshInsights();
       }
     } catch (error) {
-      console.error("Error fetching insights:", error);
+      // Silently fail - insights are non-critical
     }
   };
 
@@ -78,7 +78,6 @@ export const AIInsights = ({ section }: AIInsightsProps) => {
         console.log(data.message); // Credit saver message
       }
     } catch (error: any) {
-      console.error("Error generating insights:", error);
       if (error.message?.includes("429")) {
         toast({
           title: "Rate limit reached",

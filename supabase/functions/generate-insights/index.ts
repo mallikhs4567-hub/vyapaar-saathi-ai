@@ -1,231 +1,265 @@
-// ============================================
-// FILE: supabase/functions/generate-insights/index.ts
-// Secured edge function with proper JWT verification
-// ============================================
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 interface InsightRequest {
   businessType?: string;
-  period?: 'week' | 'month' | 'quarter' | 'year';
+  period?: string;
   metrics?: string[];
+  section?: string;
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
+    // Get the JWT token from the Authorization header
+    const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    let body: InsightRequest = {};
-    if (req.method === 'POST') {
-      try {
-        body = await req.json();
-      } catch {
-        return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    }
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const token = authHeader.replace('Bearer ', '');
     
-    const period = body.period || 'month';
-    const now = new Date();
-    let startDate = new Date();
-
-    switch (period) {
-      case 'week':
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case 'month':
-        startDate.setMonth(now.getMonth() - 1);
-        break;
-      case 'quarter':
-        startDate.setMonth(now.getMonth() - 3);
-        break;
-      case 'year':
-        startDate.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-
-    const startDateStr = startDate.toISOString().split('T')[0];
-
-    const { data: salesData } = await supabase
-      .from('Sales')
-      .select('"Amount","Date","Quantity"')
-      .eq('"User_id"', user.id)
-      .gte('"Date"', startDateStr);
-
-    const { data: inventoryData } = await supabase
-      .from('Inventory')
-      .select('"Item_name","Stock quantity","Price_per_unit","Category"')
-      .eq('user_id', user.id)
-      .order('"Stock quantity"', { ascending: true })
-      .limit(50);
-
-    const { data: financeData } = await supabase
-      .from('finance')
-      .select('amount, type, created_at')
-      .eq('user_id', user.id);
-
-    const insights = generateBusinessInsights({
-      sales: salesData || [],
-      products: inventoryData || [],
-      finance: financeData || [],
-      period,
-      businessType: body.businessType || 'general',
+    // Create Supabase client with the user's token
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } }
     });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        period,
-        insights,
-        metadata: {
-          salesCount: salesData?.length || 0,
-          productsCount: inventoryData?.length || 0,
-          generatedAt: new Date().toISOString(),
-        },
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
+    // Verify the token and get the user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = user.id;
+    const { section } = await req.json() as InsightRequest;
+
+    // Check if insights were generated in the last hour to save credits
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentInsights } = await supabase
+      .from('ai_insights')
+      .select('created_at')
+      .eq('user_id', userId)
+      .eq('section', section || 'dashboard')
+      .gte('created_at', oneHourAgo)
+      .limit(1);
+
+    if (recentInsights && recentInsights.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'Using recent insights to save AI credits',
+          insights: [] 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch data for insights - using userId from JWT token
+    const [salesData, inventoryData, financeData] = await Promise.all([
+      supabase
+        .from('Sales')
+        .select('*')
+        .eq('User_id', userId)
+        .order('Date', { ascending: false })
+        .limit(100),
+      supabase
+        .from('Inventory')
+        .select('*')
+        .eq('user_id', userId),
+      supabase
+        .from('finance')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(100)
+    ]);
+
+    const insights = generateBusinessInsights(
+      salesData.data || [],
+      inventoryData.data || [],
+      financeData.data || [],
+      { section }
     );
 
+    // Store insights
+    await supabase
+      .from('ai_insights')
+      .upsert({
+        user_id: userId,
+        section: section || 'dashboard',
+        insights: insights as any,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,section'
+      });
+
+    return new Response(
+      JSON.stringify({ insights }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 
-// ==================== INSIGHT GENERATION LOGIC ====================
-function generateBusinessInsights(data: {
-  sales: any[];
-  products: any[];
-  finance: any[];
-  period: string;
-  businessType: string;
-}): any[] {
-  // Calculate totals from schema-correct fields
-  const salesAmounts = data.sales.map((s: any) => Number(s["Amount"] || 0));
-  const totalRevenue = salesAmounts.reduce((sum: number, v: number) => sum + v, 0);
+function generateBusinessInsights(
+  sales: any[],
+  inventory: any[],
+  finance: any[],
+  request: InsightRequest
+): any[] {
+  const insights: any[] = [];
+  const section = request.section || 'dashboard';
 
-  // Growth based on first vs second half of the period
-  const midpoint = Math.floor(salesAmounts.length / 2);
-  const firstHalfRevenue = salesAmounts.slice(0, midpoint).reduce((s, v) => s + v, 0);
-  const secondHalfRevenue = salesAmounts.slice(midpoint).reduce((s, v) => s + v, 0);
-  const growthRate = firstHalfRevenue > 0 ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100 : 0;
+  // Sales insights
+  if (section === 'sales' || section === 'dashboard') {
+    const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.Amount) || 0), 0);
+    const avgSale = sales.length > 0 ? totalRevenue / sales.length : 0;
 
-  insights.push({
-    type: 'revenue',
-    title: 'Revenue Overview',
-    value: totalRevenue,
-    change: growthRate,
-    trend: growthRate > 0 ? 'up' : 'down',
-    description: `Total revenue of ₹${totalRevenue.toFixed(2)} with ${growthRate.toFixed(1)}% ${growthRate > 0 ? 'growth' : 'decline'}`,
-  });
+    if (sales.length > 0) {
+      insights.push({
+        type: 'sales',
+        title: '💰 Sales Performance',
+        description: `Total revenue: ₹${totalRevenue.toLocaleString()}. Average sale: ₹${avgSale.toFixed(0)}`,
+        value: totalRevenue,
+        suggestions: [
+          'Track peak sales hours to optimize staffing',
+          'Offer loyalty rewards to increase repeat customers',
+        ]
+      });
+    }
 
-  // Low stock products using "Stock quantity"
-  const lowStockProducts = data.products.filter((p: any) => Number(p["Stock quantity"] || 0) < 10);
-  if (lowStockProducts.length > 0) {
-    insights.push({
-      type: 'alert',
-      title: 'Low Stock Warning',
-      severity: 'high',
-      count: lowStockProducts.length,
-      items: lowStockProducts.map((p: any) => p["Item_name"]) as string[],
-      description: `${lowStockProducts.length} products are running low on stock`,
+    // Calculate growth rate
+    const last30Days = sales.filter(s => {
+      const saleDate = new Date(s.Date);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return saleDate >= thirtyDaysAgo;
     });
+
+    const previous30Days = sales.filter(s => {
+      const saleDate = new Date(s.Date);
+      const sixtyDaysAgo = new Date();
+      const thirtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return saleDate >= sixtyDaysAgo && saleDate < thirtyDaysAgo;
+    });
+
+    const recentRevenue = last30Days.reduce((sum, sale) => sum + (Number(sale.Amount) || 0), 0);
+    const previousRevenue = previous30Days.reduce((sum, sale) => sum + (Number(sale.Amount) || 0), 0);
+    
+    if (previousRevenue > 0) {
+      const growthRate = ((recentRevenue - previousRevenue) / previousRevenue) * 100;
+      insights.push({
+        type: 'growth',
+        title: growthRate >= 0 ? '📈 Growth Trend' : '📉 Revenue Decline',
+        description: `${Math.abs(growthRate).toFixed(1)}% ${growthRate >= 0 ? 'increase' : 'decrease'} vs previous month`,
+        change: growthRate,
+        suggestions: growthRate < 0 ? [
+          'Review pricing strategy',
+          'Increase marketing efforts',
+          'Analyze customer feedback'
+        ] : [
+          'Maintain current strategies',
+          'Consider expanding product range'
+        ]
+      });
+    }
   }
 
-  // Sales trend
-  const averageOrder = salesAmounts.length > 0 ? totalRevenue / salesAmounts.length : 0;
-  insights.push({
-    type: 'trend',
-    title: 'Sales Trend',
-    period: data.period,
-    totalSales: salesAmounts.length,
-    averageOrder,
-    description: `${salesAmounts.length} sales with average order value of ₹${averageOrder.toFixed(2)}`,
-  });
+  // Inventory insights
+  if (section === 'inventory' || section === 'dashboard') {
+    const lowStockItems = inventory.filter(item => 
+      (Number(item['Stock quantity']) || 0) < (Number(item.minStock) || 5)
+    );
 
-  // Finance-based KPIs
-  const totalIncome = data.finance.filter((f: any) => f.type === 'income').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-  const totalExpense = data.finance.filter((f: any) => f.type === 'expense').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-  const netProfit = totalIncome - totalExpense;
+    if (lowStockItems.length > 0) {
+      insights.push({
+        type: 'inventory',
+        title: '⚠️ Low Stock Alert',
+        description: `${lowStockItems.length} items need restocking`,
+        items: lowStockItems.map(i => i.Item_name).slice(0, 3),
+        suggestions: [
+          'Place orders for low-stock items',
+          'Set up automatic reorder points',
+          'Review supplier delivery times'
+        ]
+      });
+    }
 
-  insights.push({
-    type: 'finance',
-    title: 'Profitability Snapshot',
-    value: netProfit,
-    description: `Income ₹${totalIncome.toFixed(2)} − Expenses ₹${totalExpense.toFixed(2)} = Net ₹${netProfit.toFixed(2)}`,
-  });
+    const highValueItems = inventory
+      .sort((a, b) => 
+        (Number(b['Stock quantity']) * Number(b.Price_per_unit)) - 
+        (Number(a['Stock quantity']) * Number(a.Price_per_unit))
+      )
+      .slice(0, 3);
 
-  // High-value inventory focus
-  const topValue = (data.products || [])
-    .map((p: any) => ({
-      name: p["Item_name"],
-      value: Number(p["Price_per_unit"] || 0) * Number(p["Stock quantity"] || 0),
-    }))
-    .sort((a: any, b: any) => b.value - a.value)
-    .slice(0, 3);
-  if (topValue.length > 0) {
-    insights.push({
-      type: 'inventory',
-      title: 'High-Value Inventory Focus',
-      items: topValue,
-      description: 'Items contributing most to inventory value.',
-    });
+    if (highValueItems.length > 0) {
+      const totalInventoryValue = inventory.reduce((sum, item) => 
+        sum + ((Number(item['Stock quantity']) || 0) * (Number(item.Price_per_unit) || 0)), 0
+      );
+
+      insights.push({
+        type: 'inventory-value',
+        title: '📦 Inventory Value',
+        description: `Total inventory worth: ₹${totalInventoryValue.toLocaleString()}`,
+        value: totalInventoryValue,
+        suggestions: [
+          'Monitor slow-moving inventory',
+          'Consider seasonal promotions for overstocked items'
+        ]
+      });
+    }
   }
 
-  // Actionable recommendations
-  const suggestions: string[] = [];
-  if (growthRate < 0) suggestions.push('Run a 10% weekday discount to recover declining growth.');
-  if (lowStockProducts.length > 0) suggestions.push(`Restock ${Math.min(lowStockProducts.length, 3)} low-stock items today to prevent lost sales.`);
-  if (netProfit < 0) suggestions.push('Reduce non-essential expenses or increase pricing on low-margin items.');
-  if (averageOrder < 200) suggestions.push('Offer bundles or free add-ons above ₹500 to lift average order value.');
+  // Finance insights
+  if (section === 'finance' || section === 'dashboard') {
+    const income = finance
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+    const expenses = finance
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  if (suggestions.length > 0) {
-    insights.push({
-      type: 'recommendation',
-      title: 'AI Recommendations',
-      suggestions,
-    });
+    const profit = income - expenses;
+    const profitMargin = income > 0 ? (profit / income) * 100 : 0;
+
+    if (income > 0 || expenses > 0) {
+      insights.push({
+        type: 'finance',
+        title: '💵 Financial Health',
+        description: `Income: ₹${income.toLocaleString()} | Expenses: ₹${expenses.toLocaleString()} | Profit: ₹${profit.toLocaleString()} (${profitMargin.toFixed(1)}% margin)`,
+        value: profit,
+        suggestions: profitMargin < 20 ? [
+          'Review and reduce non-essential expenses',
+          'Negotiate better supplier rates',
+          'Consider price optimization'
+        ] : [
+          'Strong profit margin - maintain current practices',
+          'Consider reinvesting in business growth'
+        ]
+      });
+    }
   }
 
   return insights;

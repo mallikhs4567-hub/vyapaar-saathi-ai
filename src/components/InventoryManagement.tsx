@@ -64,11 +64,10 @@ export const InventoryManagement = () => {
 
       setInventory(formattedInventory);
     } catch (error) {
-      console.error('Error fetching inventory:', error);
       toast({
-        title: "Error",
-        description: "Failed to load inventory data",
-        variant: "destructive",
+        title: 'Failed to Load',
+        description: 'Unable to load inventory. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -123,11 +122,10 @@ export const InventoryManagement = () => {
 
       await fetchInventory();
     } catch (error) {
-      console.error('Error adding item:', error);
       toast({
-        title: "Error",
-        description: "Failed to add item",
-        variant: "destructive",
+        title: 'Failed to Save',
+        description: 'Unable to add inventory item. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -151,11 +149,10 @@ export const InventoryManagement = () => {
 
       await fetchInventory();
     } catch (error) {
-      console.error('Error updating quantity:', error);
       toast({
-        title: "Error",
-        description: "Failed to update quantity",
-        variant: "destructive",
+        title: 'Failed to Update',
+        description: 'Unable to update quantity. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -207,11 +204,10 @@ export const InventoryManagement = () => {
 
       await fetchInventory();
     } catch (error) {
-      console.error('Error updating item:', error);
       toast({
-        title: "Error",
-        description: "Failed to update item",
-        variant: "destructive",
+        title: 'Failed to Update',
+        description: 'Unable to update item. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -235,11 +231,10 @@ export const InventoryManagement = () => {
 
       await fetchInventory();
     } catch (error) {
-      console.error('Error deleting item:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete item",
-        variant: "destructive",
+        title: 'Failed to Delete',
+        description: 'Unable to delete item. Please try again.',
+        variant: 'destructive',
       });
     }
   };

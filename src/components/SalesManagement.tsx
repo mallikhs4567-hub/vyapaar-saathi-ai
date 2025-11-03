@@ -68,7 +68,11 @@ export const SalesManagement = () => {
 
       setSales(formattedSales);
     } catch (error) {
-      console.error('Error fetching sales:', error);
+      toast({
+        title: 'Failed to Load',
+        description: 'Unable to load sales data. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -123,11 +127,10 @@ export const SalesManagement = () => {
 
       await fetchSales();
     } catch (error) {
-      console.error('Error adding sale:', error);
       toast({
-        title: "Error",
-        description: "Failed to add sale",
-        variant: "destructive",
+        title: 'Failed to Save',
+        description: 'Unable to add sale. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -177,11 +180,10 @@ export const SalesManagement = () => {
 
       await fetchSales();
     } catch (error) {
-      console.error('Error updating sale:', error);
       toast({
-        title: "Error",
-        description: "Failed to update sale",
-        variant: "destructive",
+        title: 'Failed to Update',
+        description: 'Unable to update sale. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -205,11 +207,10 @@ export const SalesManagement = () => {
 
       await fetchSales();
     } catch (error) {
-      console.error('Error deleting sale:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete sale",
-        variant: "destructive",
+        title: 'Failed to Delete',
+        description: 'Unable to delete sale. Please try again.',
+        variant: 'destructive',
       });
     }
   };

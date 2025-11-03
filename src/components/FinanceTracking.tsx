@@ -49,7 +49,11 @@ export const FinanceTracking = () => {
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching transactions:', error);
+      toast({
+        title: 'Failed to Load',
+        description: 'Unable to load transactions. Please try again.',
+        variant: 'destructive',
+      });
       return;
     }
 

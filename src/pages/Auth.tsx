@@ -106,8 +106,6 @@ const Auth = () => {
       } else {
         navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
     } finally {
       setLoading(false);
     }
@@ -160,9 +158,7 @@ const Auth = () => {
             })
             .eq('user_id', data.user.id);
 
-          if (profileError) {
-            console.error('Profile update error:', profileError);
-          }
+          // Silent fail - profile update is optional
         }, 1000);
 
         if (data.session) {
@@ -178,8 +174,6 @@ const Auth = () => {
           });
         }
       }
-    } catch (error) {
-      console.error('Sign up error:', error);
     } finally {
       setLoading(false);
     }
@@ -202,7 +196,6 @@ const Auth = () => {
         });
       }
     } catch (error) {
-      console.error('Google sign-in error:', error);
       toast({
         title: "Google sign-in failed",
         description: "An unexpected error occurred",
@@ -230,7 +223,6 @@ const Auth = () => {
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Guest login error:', error);
       toast({
         title: "Guest login failed",
         description: "An unexpected error occurred",
@@ -412,8 +404,9 @@ const Auth = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 8 characters"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>

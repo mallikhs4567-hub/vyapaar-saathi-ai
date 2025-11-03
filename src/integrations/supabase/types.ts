@@ -82,25 +82,25 @@ export type Database = {
           Category: string | null
           id: string
           Item_name: string | null
-          Price_per_unit: number | null
-          "Stock quantity": number | null
-          user_id: string | null
+          Price_per_unit: number
+          "Stock quantity": number
+          user_id: string
         }
         Insert: {
           Category?: string | null
           id?: string
           Item_name?: string | null
-          Price_per_unit?: number | null
-          "Stock quantity"?: number | null
-          user_id?: string | null
+          Price_per_unit?: number
+          "Stock quantity"?: number
+          user_id: string
         }
         Update: {
           Category?: string | null
           id?: string
           Item_name?: string | null
-          Price_per_unit?: number | null
-          "Stock quantity"?: number | null
-          user_id?: string | null
+          Price_per_unit?: number
+          "Stock quantity"?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -136,34 +136,34 @@ export type Database = {
       }
       Sales: {
         Row: {
-          Amount: number | null
+          Amount: number
           Customer_name: string | null
-          Date: string | null
+          Date: string
           id: string
           Inventory_id: string | null
           Product: string | null
-          Quantity: number | null
-          User_id: string | null
+          Quantity: number
+          User_id: string
         }
         Insert: {
-          Amount?: number | null
+          Amount?: number
           Customer_name?: string | null
-          Date?: string | null
+          Date?: string
           id?: string
           Inventory_id?: string | null
           Product?: string | null
-          Quantity?: number | null
-          User_id?: string | null
+          Quantity?: number
+          User_id: string
         }
         Update: {
-          Amount?: number | null
+          Amount?: number
           Customer_name?: string | null
-          Date?: string | null
+          Date?: string
           id?: string
           Inventory_id?: string | null
           Product?: string | null
-          Quantity?: number | null
-          User_id?: string | null
+          Quantity?: number
+          User_id?: string
         }
         Relationships: [
           {
