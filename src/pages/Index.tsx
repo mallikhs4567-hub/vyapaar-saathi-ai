@@ -3,21 +3,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
-import { BarChart3, Package, TrendingUp, Smartphone, Sparkles, MessageSquare } from 'lucide-react';
+import { BarChart3, Package, TrendingUp, Smartphone, Sparkles, MessageSquare, Download } from 'lucide-react';
 
 const Index = () => {
   const { t } = useLanguage();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     if (user && !loading) {
       navigate('/dashboard');
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    // Show install prompt on mobile devices that aren't already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile && !isStandalone) {
+      setShowInstallPrompt(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -125,13 +136,27 @@ const Index = () => {
         </div>
 
         <div className="animate-fade-in" style={{ animationDelay: '1s' }}>
-          <Button 
-            onClick={() => navigate('/auth')} 
-            size="lg"
-            className="hover-scale"
-          >
-            Start Your Business Journey
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              onClick={() => navigate('/auth')} 
+              size="lg"
+              className="hover-scale"
+            >
+              Start Your Business Journey
+            </Button>
+            
+            {showInstallPrompt && (
+              <Button
+                onClick={() => navigate('/install')}
+                size="lg"
+                variant="outline"
+                className="hover-scale"
+              >
+                <Download className="mr-2 h-5 w-5" />
+                Install App
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
