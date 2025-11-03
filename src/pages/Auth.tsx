@@ -204,34 +204,6 @@ const Auth = () => {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInAnonymously();
-
-      if (error) {
-        toast({
-          title: "Guest login failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Welcome!",
-          description: "You're signed in as a guest",
-        });
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      toast({
-        title: "Guest login failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10 p-4">
@@ -300,26 +272,6 @@ const Auth = () => {
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or
-                    </span>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleGuestLogin} 
-                  variant="secondary" 
-                  className="w-full"
-                  disabled={loading || oauthProcessing}
-                >
-                  Continue as Guest
-                </Button>
               </div>
             </TabsContent>
             
