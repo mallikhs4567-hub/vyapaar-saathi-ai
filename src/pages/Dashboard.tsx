@@ -208,7 +208,8 @@ export default function Dashboard() {
             {showGreeting && (
               <GreetingMessage 
                 businessType={profile?.shop_category || businessType} 
-                onClose={() => setShowGreeting(false)} 
+                onClose={() => setShowGreeting(false)}
+                userName={profile?.full_name}
               />
             )}
             

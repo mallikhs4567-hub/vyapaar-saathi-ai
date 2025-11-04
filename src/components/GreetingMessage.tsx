@@ -7,9 +7,10 @@ import { X, Star, TrendingUp, Target } from 'lucide-react';
 interface GreetingMessageProps {
   businessType: string;
   onClose: () => void;
+  userName?: string;
 }
 
-export const GreetingMessage = ({ businessType, onClose }: GreetingMessageProps) => {
+export const GreetingMessage = ({ businessType, onClose, userName }: GreetingMessageProps) => {
   const { t } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -44,7 +45,7 @@ export const GreetingMessage = ({ businessType, onClose }: GreetingMessageProps)
             <div className="flex items-center gap-2 mb-2">
               <Star className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-semibold text-foreground">
-                {getGreeting()}, Business Owner! 👋
+                {getGreeting()}, {userName || 'Friend'}! 👋
               </h2>
             </div>
             <p className="text-muted-foreground mb-3">
