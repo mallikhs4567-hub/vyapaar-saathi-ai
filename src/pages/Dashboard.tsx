@@ -250,46 +250,7 @@ export default function Dashboard() {
             <AIInsights section="dashboard" />
 
             {/* Main Content */}
-            <div className="space-y-4">
-              <AIAssistant />
-              <div className="p-6 border rounded-xl bg-card shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Actions</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/10 hover:border-primary"
-                    onClick={() => setActiveTab('finance')}
-                  >
-                    <BarChart3 className="h-7 w-7 text-primary" />
-                    <span className="text-sm font-medium">Reports</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/10 hover:border-primary"
-                    onClick={() => setActiveTab('promote')}
-                  >
-                    <Share2 className="h-7 w-7 text-primary" />
-                    <span className="text-sm font-medium">Share</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/10 hover:border-primary"
-                    onClick={() => setActiveTab('inventory')}
-                  >
-                    <Package className="h-7 w-7 text-primary" />
-                    <span className="text-sm font-medium">Add Stock</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/10 hover:border-primary"
-                    onClick={() => setActiveTab('sales')}
-                  >
-                    <Wallet className="h-7 w-7 text-primary" />
-                    <span className="text-sm font-medium">Add Sale</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <AIAssistant />
           </div>
         )}
 
