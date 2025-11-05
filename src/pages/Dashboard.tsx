@@ -15,7 +15,7 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { GreetingMessage } from '@/components/GreetingMessage';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DollarSign, 
   Package, 
@@ -194,7 +194,11 @@ export default function Dashboard() {
             {/* Right side */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <LanguageSelector />
-              <Avatar className="h-8 w-8">
+              <Avatar 
+                className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity" 
+                onClick={() => navigate('/profile')}
+              >
+                <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
                 <AvatarFallback className="bg-gradient-button text-white text-sm font-semibold">
                   {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
                 </AvatarFallback>
