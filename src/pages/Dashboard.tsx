@@ -15,6 +15,7 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { GreetingMessage } from '@/components/GreetingMessage';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   DollarSign, 
   Package, 
@@ -23,7 +24,8 @@ import {
   Share2,
   BarChart3,
   Wallet,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -192,6 +194,11 @@ export default function Dashboard() {
             {/* Right side */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <LanguageSelector />
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-gradient-button text-white text-sm font-semibold">
+                  {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="px-2">
                 <LogOut className="h-4 w-4" />
               </Button>
