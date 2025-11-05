@@ -80,6 +80,15 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			backgroundImage: {
+				'gradient-button': 'var(--gradient-button)',
+				'gradient-header': 'var(--gradient-header)',
+				'ai-glow': 'var(--ai-glow)',
+			},
+			fontFamily: {
+				'poppins': ['Poppins', 'sans-serif'],
+				'inter': ['Inter', 'sans-serif'],
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
