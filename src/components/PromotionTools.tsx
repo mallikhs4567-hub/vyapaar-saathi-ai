@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { QRCodeGenerator } from './QRCodeGenerator';
 import { BusinessCardGenerator } from './BusinessCardGenerator';
 import { SocialPostCreator } from './SocialPostCreator';
+import { PlatformConnectionDialog } from './PlatformConnectionDialog';
 import { toast } from '@/hooks/use-toast';
 import { 
   Share2, 
@@ -27,7 +28,9 @@ import {
   TrendingUp,
   Users,
   Target,
-  Megaphone
+  Megaphone,
+  Check,
+  X
 } from 'lucide-react';
 
 interface Campaign {
@@ -83,10 +86,14 @@ export const PromotionTools = () => {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [platformConnections, setPlatformConnections] = useState<any[]>([]);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
+      fetchPlatformConnections();
     }
   }, [user]);
 
@@ -101,6 +108,55 @@ export const PromotionTools = () => {
 
     if (data) {
       setProfile(data);
+    }
+  };
+
+  const fetchPlatformConnections = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('platform_connections')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setPlatformConnections(data || []);
+    } catch (error) {
+      console.error('Error fetching platform connections:', error);
+    }
+  };
+
+  const isPlatformConnected = (platform: string) => {
+    return platformConnections.some(
+      conn => conn.platform === platform && conn.is_connected
+    );
+  };
+
+  const handleDisconnect = async (platform: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('platform_connections')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('platform', platform);
+
+      if (error) throw error;
+
+      toast({
+        title: "Disconnected",
+        description: `Successfully disconnected from ${platform}`,
+      });
+
+      fetchPlatformConnections();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -181,19 +237,12 @@ export const PromotionTools = () => {
   ];
 
   const platforms = [
-    { name: 'Google My Business', icon: Star, color: 'bg-yellow-100 text-yellow-800' },
-    { name: 'Facebook', icon: Facebook, color: 'bg-blue-100 text-blue-800' },
-    { name: 'Instagram', icon: Instagram, color: 'bg-pink-100 text-pink-800' },
-    { name: 'WhatsApp Business', icon: MessageCircle, color: 'bg-green-100 text-green-800' },
-    { name: 'LinkedIn', icon: Linkedin, color: 'bg-blue-100 text-blue-600' }
+    { name: 'Twitter', platform: 'twitter', icon: Share2, color: 'bg-sky-100 text-sky-800' },
+    { name: 'Facebook', platform: 'facebook', icon: Facebook, color: 'bg-blue-100 text-blue-800' },
+    { name: 'Instagram', platform: 'instagram', icon: Instagram, color: 'bg-pink-100 text-pink-800' },
+    { name: 'LinkedIn', platform: 'linkedin', icon: Linkedin, color: 'bg-blue-100 text-blue-600' },
+    { name: 'TikTok', platform: 'tiktok', icon: Camera, color: 'bg-gray-100 text-gray-800' }
   ];
-
-  const connectPlatform = (platformName: string) => {
-    toast({
-      title: "Platform Integration",
-      description: `${platformName} integration coming soon! This will allow you to post directly to your ${platformName} account.`,
-    });
-  };
 
   const renderToolContent = () => {
     const businessData = getBusinessData();
@@ -275,31 +324,70 @@ export const PromotionTools = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Share2 className="h-5 w-5" />
-                Platform Integrations
+                Platform Integrations - Direct Publishing
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {platforms.map((platform) => {
                   const Icon = platform.icon;
+                  const connected = isPlatformConnected(platform.platform);
                   return (
                     <Card key={platform.name} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${platform.color}`}>
-                            <Icon className="h-5 w-5" />
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${platform.color}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium">{platform.name}</h4>
+                              {connected ? (
+                                <Badge variant="default" className="bg-green-500 mt-1">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Connected
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="mt-1">
+                                  {platform.platform === 'twitter' ? 'Ready' : 'Coming Soon'}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium">{platform.name}</h4>
-                            <p className="text-sm text-muted-foreground">Connect & promote</p>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => connectPlatform(platform.name)}
-                          >
-                            Connect
-                          </Button>
+                          {connected ? (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDisconnect(platform.platform)}
+                              className="w-full"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Disconnect
+                            </Button>
+                          ) : (
+                            platform.platform === 'twitter' ? (
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedPlatform(platform.platform);
+                                  setConnectionDialogOpen(true);
+                                }}
+                                className="w-full"
+                              >
+                                Connect
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                disabled
+                                className="w-full"
+                              >
+                                Coming Soon
+                              </Button>
+                            )
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -307,15 +395,28 @@ export const PromotionTools = () => {
                 })}
               </div>
               
-              <Card className="mt-6 bg-muted/50">
-                <CardContent className="p-6 text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">Coming Soon: Direct Publishing</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Connect your social media accounts to publish content directly from Vyapaar Saathi AI. 
-                    Schedule posts, track performance, and manage all your social presence in one place.
-                  </p>
-                  <Badge variant="secondary">Feature in Development</Badge>
+              <Card className="mt-6 bg-gradient-to-br from-primary/10 to-primary/5">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <TrendingUp className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-2">Direct Publishing is Live!</h3>
+                      <p className="text-muted-foreground mb-3">
+                        Connect your Twitter account to publish content directly from Vyapaar Saathi AI. 
+                        More platforms coming soon!
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="default" className="bg-green-500">
+                          <Check className="h-3 w-3 mr-1" />
+                          Twitter Available
+                        </Badge>
+                        <Badge variant="secondary">Facebook Coming Soon</Badge>
+                        <Badge variant="secondary">Instagram Coming Soon</Badge>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </CardContent>
@@ -451,6 +552,16 @@ export const PromotionTools = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {selectedPlatform && (
+        <PlatformConnectionDialog
+          platform={selectedPlatform}
+          platformName={selectedPlatform === 'twitter' ? 'Twitter' : selectedPlatform}
+          open={connectionDialogOpen}
+          onOpenChange={setConnectionDialogOpen}
+          onSuccess={fetchPlatformConnections}
+        />
+      )}
     </div>
   );
 };

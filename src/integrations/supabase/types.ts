@@ -104,6 +104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_connections: {
+        Row: {
+          access_token: string | null
+          access_token_secret: string | null
+          api_key: string | null
+          api_secret: string | null
+          created_at: string | null
+          id: string
+          is_connected: boolean | null
+          platform: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_secret?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          platform: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_secret?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          platform?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

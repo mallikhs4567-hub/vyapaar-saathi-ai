@@ -1,1 +1,4 @@
 project_id = "wlmhhlffetqqioondtre"
+
+[functions.publish-to-platform]
+verify_jwt = true

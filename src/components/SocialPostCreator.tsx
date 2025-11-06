@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, Share2, Camera, Hash, Sparkles, Loader2 } from 'lucide-react';
+import { Download, Share2, Camera, Hash, Sparkles, Loader2, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +31,71 @@ export const SocialPostCreator = ({ businessData }: SocialPostCreatorProps) => {
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [platformConnections, setPlatformConnections] = useState<any[]>([]);
   const postRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchPlatformConnections();
+  }, []);
+
+  const fetchPlatformConnections = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('platform_connections')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setPlatformConnections(data || []);
+    } catch (error) {
+      console.error('Error fetching platform connections:', error);
+    }
+  };
+
+  const isPlatformConnected = (platform: string) => {
+    return platformConnections.some(
+      conn => conn.platform === platform && conn.is_connected
+    );
+  };
+
+  const publishToPlatform = async (platform: string) => {
+    try {
+      setIsPublishing(true);
+      
+      if (!postData.title || !postData.description) {
+        throw new Error('Please generate or enter content first');
+      }
+
+      const fullContent = `${postData.title}\n\n${postData.description}${postData.offerText ? `\n\n${postData.offerText}` : ''}\n\n${hashtags.map(tag => `#${tag}`).join(' ')}`;
+
+      const { data, error } = await supabase.functions.invoke('publish-to-platform', {
+        body: {
+          platform,
+          content: fullContent,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Published!",
+        description: `Successfully published to ${platform}`,
+      });
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      toast({
+        title: "Publish Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const platforms = [
     { id: 'instagram', name: 'Instagram', size: '1080x1080' },
@@ -337,15 +401,34 @@ export const SocialPostCreator = ({ businessData }: SocialPostCreatorProps) => {
             </div>
           </div>
           
-          <div className="flex gap-2 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center">
             <Button onClick={downloadPost} variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
-            <Button onClick={sharePost}>
+            <Button onClick={sharePost} variant="outline">
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
+            {isPlatformConnected('twitter') && postData.title && (
+              <Button 
+                onClick={() => publishToPlatform('twitter')} 
+                disabled={isPublishing}
+                variant="default"
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Publish to Twitter
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
