@@ -8,27 +8,29 @@ All colors MUST be HSL.
 
 @layer base {
 :root {
-    --background: 210 20% 98%;
-    --foreground: 217 33% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 217 33% 12%;
+    /* Sky Blue Theme - Vyapaar Saathi AI */
+    --background: 0 0% 100%;
+    --foreground: 215 25% 15%;
+    --card: 214 32% 96%;
+    --card-foreground: 215 25% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 12%;
-    --primary: 217 65% 33%;
+    --popover-foreground: 215 25% 15%;
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 160 84% 39%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 210 20% 96%;
-    --muted-foreground: 217 19% 35%;
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 73% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 65% 33%;
-    --radius: 1rem;
-    --success: 142 71% 37%;
+    --primary-dark: 217 91% 60%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 215 25% 15%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 32% 96%;
+    --accent-foreground: 199 89% 48%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 48%;
+    --radius: 1.125rem;
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
@@ -36,60 +38,61 @@ All colors MUST be HSL.
     --info-foreground: 0 0% 100%;
     
     /* Gradients */
-    --gradient-button: linear-gradient(90deg, hsl(217, 83%, 54%) 0%, hsl(160, 84%, 39%) 100%);
-    --gradient-header: linear-gradient(90deg, hsl(217, 65%, 33%) 0%, hsl(187, 94%, 43%) 100%);
-    --ai-glow: radial-gradient(circle at center, hsla(187, 94%, 43%, 0.4) 0%, transparent 70%);
+    --gradient-button: linear-gradient(90deg, hsl(199, 89%, 48%) 0%, hsl(217, 91%, 60%) 100%);
+    --gradient-header: linear-gradient(90deg, hsl(199, 89%, 48%) 0%, hsl(217, 91%, 60%) 100%);
+    --ai-glow: radial-gradient(circle at center, hsla(199, 89%, 48%, 0.3) 0%, transparent 70%);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 217 33% 12%;
-    --sidebar-primary: 217 65% 33%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 215 25% 15%;
+    --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 96%;
-    --sidebar-accent-foreground: 217 33% 12%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 65% 33%;
+    --sidebar-accent: 214 32% 96%;
+    --sidebar-accent-foreground: 199 89% 48%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 199 89% 48%;
   }
 
 .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 20% 98%;
-    --card: 217 33% 17%;
-    --card-foreground: 210 20% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217 83% 54%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 160 84% 39%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 214 32% 84%;
-    --accent: 38 92% 50%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 71%;
-    --destructive-foreground: 222 47% 11%;
-    --border: 217 25% 27%;
-    --input: 217 25% 27%;
-    --ring: 217 83% 54%;
-    --success: 142 71% 45%;
-    --success-foreground: 222 47% 11%;
-    --warning: 48 96% 53%;
-    --warning-foreground: 222 47% 11%;
+    --background: 215 28% 8%;
+    --foreground: 0 0% 98%;
+    --card: 215 28% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 215 28% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 217 91% 60%;
+    --secondary: 215 28% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 215 28% 16%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 215 28% 16%;
+    --accent-foreground: 199 89% 48%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 215 28% 16%;
+    --input: 215 28% 16%;
+    --ring: 199 89% 48%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
     
     /* Gradients */
-    --gradient-button: linear-gradient(90deg, hsl(217, 83%, 54%) 0%, hsl(160, 84%, 39%) 100%);
-    --gradient-header: linear-gradient(90deg, hsl(217, 65%, 33%) 0%, hsl(187, 94%, 43%) 100%);
-    --ai-glow: radial-gradient(circle at center, hsla(187, 94%, 43%, 0.4) 0%, transparent 70%);
+    --gradient-button: linear-gradient(90deg, hsl(199, 89%, 48%) 0%, hsl(217, 91%, 60%) 100%);
+    --gradient-header: linear-gradient(90deg, hsl(199, 89%, 48%) 0%, hsl(217, 91%, 60%) 100%);
+    --ai-glow: radial-gradient(circle at center, hsla(199, 89%, 48%, 0.3) 0%, transparent 70%);
     
-    --sidebar-background: 217 33% 17%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 217 83% 54%;
+    --sidebar-background: 215 28% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 25% 27%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 217 25% 27%;
-    --sidebar-ring: 217 83% 54%;
+    --sidebar-accent: 215 28% 16%;
+    --sidebar-accent-foreground: 199 89% 48%;
+    --sidebar-border: 215 28% 16%;
+    --sidebar-ring: 199 89% 48%;
   }
 }
 
