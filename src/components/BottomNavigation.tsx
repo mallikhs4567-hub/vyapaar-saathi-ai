@@ -11,31 +11,21 @@ const navItems = [
     id: 'dashboard', 
     icon: Home, 
     label: 'Home',
-    color: 'text-primary'
   },
   { 
-    id: 'sales', 
-    icon: DollarSign, 
-    label: 'Sales',
-    color: 'text-success'
-  },
-  { 
-    id: 'inventory', 
+    id: 'tools', 
     icon: Package, 
-    label: 'Stock',
-    color: 'text-info'
+    label: 'Tools',
   },
   { 
-    id: 'finance', 
-    icon: Wallet, 
-    label: 'Money',
-    color: 'text-warning'
+    id: 'insights', 
+    icon: DollarSign, 
+    label: 'Insights',
   },
   { 
-    id: 'promote', 
+    id: 'profile', 
     icon: Share2, 
-    label: 'Share',
-    color: 'text-accent-foreground'
+    label: 'Profile',
   },
 ];
 
@@ -56,18 +46,13 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                 isActive && "bg-primary/10"
               )}
             >
-              <div className={cn(
-                "transition-all duration-200 p-2 rounded-full",
-                isActive ? "bg-primary scale-110" : "bg-muted"
-              )}>
-                <Icon 
-                  className={cn(
-                    "h-6 w-6 transition-colors duration-200",
-                    isActive ? "text-primary-foreground" : item.color
-                  )}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-              </div>
+              <Icon 
+                className={cn(
+                  "h-6 w-6 transition-colors duration-200",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
               <span className={cn(
                 "text-xs font-medium transition-colors duration-200",
                 isActive ? "text-primary" : "text-muted-foreground"
