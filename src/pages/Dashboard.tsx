@@ -268,6 +268,14 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Sales Content */}
+        {activeTab === 'sales' && (
+          <div className="space-y-4 animate-fade-in">
+            <AIInsights section="sales" />
+            <SalesManagement />
+          </div>
+        )}
+
         {/* Billing Content */}
         {activeTab === 'billing' && (
           <div className="space-y-4 animate-fade-in">
