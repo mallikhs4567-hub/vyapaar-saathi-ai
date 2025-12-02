@@ -11,6 +11,7 @@ import { SalesManagement } from '@/components/SalesManagement';
 import { InventoryManagement } from '@/components/InventoryManagement';
 import { FinanceTracking } from '@/components/FinanceTracking';
 import { PromotionTools } from '@/components/PromotionTools';
+import { BillingManagement } from '@/components/BillingManagement';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { GreetingMessage } from '@/components/GreetingMessage';
 import { BottomNavigation } from '@/components/BottomNavigation';
@@ -266,11 +267,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Sales Content */}
-        {activeTab === 'sales' && (
+        {/* Billing Content */}
+        {activeTab === 'billing' && (
           <div className="space-y-4 animate-fade-in">
             <AIInsights section="sales" />
-            <SalesManagement />
+            <BillingManagement />
           </div>
         )}
 
