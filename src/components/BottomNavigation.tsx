@@ -14,9 +14,9 @@ const navItems = [
     color: 'text-primary'
   },
   { 
-    id: 'sales', 
+    id: 'billing', 
     icon: DollarSign, 
-    label: 'Sales',
+    label: 'Billing',
     color: 'text-success'
   },
   { 
