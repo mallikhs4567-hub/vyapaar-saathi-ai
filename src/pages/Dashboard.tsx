@@ -26,7 +26,8 @@ import {
   BarChart3,
   Wallet,
   LogOut,
-  User
+  User,
+  Plus
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -298,6 +299,17 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Floating Billing Button */}
+      {activeTab === 'dashboard' && (
+        <Button
+          onClick={() => setActiveTab('billing')}
+          className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-20"
+          size="icon"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
 
       {/* Bottom Navigation */}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
