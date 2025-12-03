@@ -256,8 +256,11 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          shop_address: string | null
           shop_category: string | null
+          shop_email: string | null
           shop_name: string | null
+          shop_phone: string | null
           updated_at: string
           user_id: string
         }
@@ -266,8 +269,11 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          shop_address?: string | null
           shop_category?: string | null
+          shop_email?: string | null
           shop_name?: string | null
+          shop_phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -276,8 +282,11 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          shop_address?: string | null
           shop_category?: string | null
+          shop_email?: string | null
           shop_name?: string | null
+          shop_phone?: string | null
           updated_at?: string
           user_id?: string
         }
