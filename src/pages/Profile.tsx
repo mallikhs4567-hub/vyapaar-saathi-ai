@@ -17,6 +17,9 @@ export default function Profile() {
   const [fullName, setFullName] = useState('');
   const [shopName, setShopName] = useState('');
   const [shopCategory, setShopCategory] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopPhone, setShopPhone] = useState('');
+  const [shopEmail, setShopEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,6 +49,9 @@ export default function Profile() {
       setFullName(data.full_name || '');
       setShopName(data.shop_name || '');
       setShopCategory(data.shop_category || '');
+      setShopAddress(data.shop_address || '');
+      setShopPhone(data.shop_phone || '');
+      setShopEmail(data.shop_email || '');
       setAvatarUrl(data.avatar_url || '');
     }
   };
@@ -97,6 +103,9 @@ export default function Profile() {
           full_name: fullName,
           shop_name: shopName,
           shop_category: shopCategory,
+          shop_address: shopAddress,
+          shop_phone: shopPhone,
+          shop_email: shopEmail,
           avatar_url: avatarUrl,
         })
         .eq('user_id', user!.id);
@@ -208,6 +217,37 @@ export default function Profile() {
                   value={shopCategory}
                   onChange={(e) => setShopCategory(e.target.value)}
                   placeholder="E.g., Retail, Restaurant, Services"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="shopAddress">Shop Address</Label>
+                <Input
+                  id="shopAddress"
+                  value={shopAddress}
+                  onChange={(e) => setShopAddress(e.target.value)}
+                  placeholder="Enter your shop address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="shopPhone">Shop Phone</Label>
+                <Input
+                  id="shopPhone"
+                  value={shopPhone}
+                  onChange={(e) => setShopPhone(e.target.value)}
+                  placeholder="Enter your shop phone number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="shopEmail">Shop Email</Label>
+                <Input
+                  id="shopEmail"
+                  type="email"
+                  value={shopEmail}
+                  onChange={(e) => setShopEmail(e.target.value)}
+                  placeholder="Enter your shop email"
                 />
               </div>
             </div>

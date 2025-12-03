@@ -73,8 +73,26 @@ export const BillingManagement = () => {
   useEffect(() => {
     if (user) {
       fetchBills();
+      fetchProfile();
     }
   }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('shop_name, shop_address, shop_phone, shop_email')
+      .eq('user_id', user.id)
+      .single();
+
+    if (data) {
+      setShopName(data.shop_name || '');
+      setShopAddress(data.shop_address || '');
+      setShopPhone(data.shop_phone || '');
+      setShopEmail(data.shop_email || '');
+    }
+  };
 
   const fetchBills = async () => {
     if (!user) return;
