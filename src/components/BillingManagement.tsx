@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, FileText, Download, Trash2, Edit, IndianRupee, Calendar, User, Phone } from 'lucide-react';
+import { Plus, FileText, Download, Trash2, Edit, IndianRupee, Calendar, User, Phone, Store } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 interface Bill {
@@ -59,8 +60,15 @@ export const BillingManagement = () => {
   const [items, setItems] = useState<BillItem[]>([{ product_name: '', quantity: 1, unit_price: 0, total_price: 0 }]);
   const [taxPercentage, setTaxPercentage] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
   const [notes, setNotes] = useState('');
   const [paidAmount, setPaidAmount] = useState(0);
+  
+  // Shop details
+  const [shopName, setShopName] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopPhone, setShopPhone] = useState('');
+  const [shopEmail, setShopEmail] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -96,8 +104,11 @@ export const BillingManagement = () => {
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = (subtotal * taxPercentage) / 100;
-    const total = subtotal + taxAmount - discountAmount;
-    return { subtotal, taxAmount, total };
+    const actualDiscount = discountType === 'percentage' 
+      ? (subtotal * discountAmount) / 100 
+      : discountAmount;
+    const total = subtotal + taxAmount - actualDiscount;
+    return { subtotal, taxAmount, total, actualDiscount };
   };
 
   const handleItemChange = (index: number, field: keyof BillItem, value: any) => {
@@ -131,16 +142,18 @@ export const BillingManagement = () => {
     setItems([{ product_name: '', quantity: 1, unit_price: 0, total_price: 0 }]);
     setTaxPercentage(0);
     setDiscountAmount(0);
+    setDiscountType('amount');
     setNotes('');
     setPaidAmount(0);
     setEditingBill(null);
+    // Keep shop details as they rarely change
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
-    const { subtotal, taxAmount, total } = calculateTotals();
+    const { subtotal, taxAmount, total, actualDiscount } = calculateTotals();
     
     let status: 'paid' | 'unpaid' | 'partial' = 'unpaid';
     if (paidAmount >= total) status = 'paid';
@@ -158,7 +171,7 @@ export const BillingManagement = () => {
       subtotal,
       tax_percentage: taxPercentage,
       tax_amount: taxAmount,
-      discount_amount: discountAmount,
+      discount_amount: actualDiscount,
       total_amount: total,
       paid_amount: paidAmount,
       status,
@@ -282,6 +295,18 @@ export const BillingManagement = () => {
     billElement.style.fontFamily = 'Arial, sans-serif';
     
     billElement.innerHTML = `
+      ${shopName ? `
+      <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #0EA5E9;">
+        <h2 style="color: #1E293B; margin: 0 0 5px 0; font-size: 24px;">${shopName}</h2>
+        ${shopAddress ? `<p style="margin: 5px 0; color: #64748B; font-size: 14px;">${shopAddress}</p>` : ''}
+        <div style="color: #64748B; font-size: 13px;">
+          ${shopPhone ? `<span>📞 ${shopPhone}</span>` : ''}
+          ${shopPhone && shopEmail ? ' | ' : ''}
+          ${shopEmail ? `<span>✉️ ${shopEmail}</span>` : ''}
+        </div>
+      </div>
+      ` : ''}
+      
       <div style="text-align: center; margin-bottom: 30px;">
         <h1 style="color: #0EA5E9; margin-bottom: 5px;">INVOICE</h1>
         <p style="color: #64748B; font-size: 14px;">Bill #${bill.bill_number}</p>
@@ -375,7 +400,7 @@ export const BillingManagement = () => {
     ? bills 
     : bills.filter(bill => bill.status === filterStatus);
 
-  const { subtotal, taxAmount, total } = calculateTotals();
+  const { subtotal, taxAmount, total, actualDiscount } = calculateTotals();
 
   return (
     <div className="space-y-4">
@@ -408,6 +433,55 @@ export const BillingManagement = () => {
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Shop Details Section */}
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Store className="h-4 w-4 text-primary" />
+                      <Label className="text-base font-semibold">Shop Details (for Invoice Header)</Label>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="shopName">Shop Name</Label>
+                        <Input
+                          id="shopName"
+                          value={shopName}
+                          onChange={(e) => setShopName(e.target.value)}
+                          placeholder="Your Business Name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="shopPhone">Shop Phone</Label>
+                        <Input
+                          id="shopPhone"
+                          type="tel"
+                          value={shopPhone}
+                          onChange={(e) => setShopPhone(e.target.value)}
+                          placeholder="Business contact number"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="shopEmail">Shop Email</Label>
+                        <Input
+                          id="shopEmail"
+                          type="email"
+                          value={shopEmail}
+                          onChange={(e) => setShopEmail(e.target.value)}
+                          placeholder="business@email.com"
+                        />
+                      </div>
+                      <div className="md:col-span-1">
+                        <Label htmlFor="shopAddress">Shop Address</Label>
+                        <Input
+                          id="shopAddress"
+                          value={shopAddress}
+                          onChange={(e) => setShopAddress(e.target.value)}
+                          placeholder="Full business address"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer Details Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="customerName">Customer Name *</Label>
@@ -549,14 +623,26 @@ export const BillingManagement = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="discountAmount">Discount Amount</Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="discountAmount">Discount</Label>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs ${discountType === 'amount' ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>₹</span>
+                          <Switch
+                            checked={discountType === 'percentage'}
+                            onCheckedChange={(checked) => setDiscountType(checked ? 'percentage' : 'amount')}
+                          />
+                          <span className={`text-xs ${discountType === 'percentage' ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>%</span>
+                        </div>
+                      </div>
                       <Input
                         id="discountAmount"
                         type="number"
                         min="0"
+                        max={discountType === 'percentage' ? 100 : undefined}
                         step="0.01"
                         value={discountAmount}
                         onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                        placeholder={discountType === 'percentage' ? 'Enter %' : 'Enter amount'}
                       />
                     </div>
                     <div>
@@ -585,8 +671,8 @@ export const BillingManagement = () => {
                     )}
                     {discountAmount > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Discount:</span>
-                        <span className="font-semibold">-₹{discountAmount.toFixed(2)}</span>
+                        <span>Discount {discountType === 'percentage' ? `(${discountAmount}%)` : ''}:</span>
+                        <span className="font-semibold">-₹{actualDiscount.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg border-t pt-2">
