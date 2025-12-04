@@ -17,6 +17,7 @@ import { GreetingMessage } from '@/components/GreetingMessage';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   DollarSign, 
   Package, 
@@ -27,7 +28,8 @@ import {
   Wallet,
   LogOut,
   User,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -46,6 +48,15 @@ export default function Dashboard() {
     lowStockCount: 0,
     pendingPayments: 0,
   });
+  const [showProfileAlert, setShowProfileAlert] = useState(true);
+
+  const isProfileIncomplete = profile && (
+    !profile.shop_name || 
+    !profile.shop_address || 
+    !profile.shop_phone || 
+    !profile.shop_email ||
+    !profile.full_name
+  );
 
   useEffect(() => {
     if (!loading && !user) {
@@ -217,6 +228,30 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fade-in">
+            {/* Profile Completion Alert */}
+            {showProfileAlert && isProfileIncomplete && (
+              <Alert className="bg-primary/10 border-primary/20 relative">
+                <AlertCircle className="h-4 w-4 text-primary" />
+                <AlertDescription className="flex items-center justify-between pr-6">
+                  <span className="text-sm">
+                    Complete your profile to add shop details to bills.{' '}
+                    <button 
+                      onClick={() => navigate('/profile')} 
+                      className="text-primary font-medium underline hover:no-underline"
+                    >
+                      Update Profile
+                    </button>
+                  </span>
+                </AlertDescription>
+                <button 
+                  onClick={() => setShowProfileAlert(false)}
+                  className="absolute top-2 right-2 p-1 hover:bg-primary/10 rounded"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </Alert>
+            )}
+
             {/* Greeting Message */}
             {showGreeting && (
               <GreetingMessage 
