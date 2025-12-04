@@ -361,8 +361,8 @@ export const AIAssistant = () => {
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className="h-[600px] flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
           VyapaarSaathiAI
@@ -383,9 +383,9 @@ export const AIAssistant = () => {
           ))}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-        <ScrollArea className="flex-1 mb-4 p-4 border rounded-md">
-          <div className="space-y-4">
+      <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <ScrollArea className="flex-1 mb-4 border rounded-md min-h-0">
+          <div className="space-y-4 p-4">
             {messages.map((message) => (
               <div
                 key={message.id}
