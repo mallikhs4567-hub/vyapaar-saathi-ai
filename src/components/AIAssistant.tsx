@@ -7,7 +7,110 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+
+// Structured message renderer for AI responses
+const StructuredMessage = ({ content }: { content: string }) => {
+  // Parse sections - split by double newlines or section headers
+  const parseContent = (text: string) => {
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let currentKey = 0;
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) {
+        elements.push(<div key={currentKey++} className="h-2" />);
+        return;
+      }
+
+      // Header detection (emoji at start or ** wrapped)
+      if (/^(📊|📦|💰|📋|✅|❌|⚠️|🎯|📈|🔔|💼|🏪|📱|🎁|⭐)/.test(trimmedLine)) {
+        const isMainHeader = trimmedLine.includes('Overview') || trimmedLine.includes('Summary') || trimmedLine.includes('Report');
+        elements.push(
+          <div key={currentKey++} className={`font-semibold ${isMainHeader ? 'text-base text-foreground border-b border-border pb-1 mb-2' : 'text-sm text-foreground mt-3'}`}>
+            {trimmedLine}
+          </div>
+        );
+        return;
+      }
+
+      // Success message (starts with ✅)
+      if (trimmedLine.startsWith('✅')) {
+        elements.push(
+          <div key={currentKey++} className="flex items-start gap-2 bg-green-500/10 text-green-700 dark:text-green-400 p-2 rounded-md text-sm">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{trimmedLine.replace('✅', '').trim()}</span>
+          </div>
+        );
+        return;
+      }
+
+      // Warning/Alert (starts with ⚠️ or ❌)
+      if (trimmedLine.startsWith('⚠️') || trimmedLine.startsWith('❌')) {
+        elements.push(
+          <div key={currentKey++} className="flex items-start gap-2 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 p-2 rounded-md text-sm">
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{trimmedLine.replace(/^(⚠️|❌)/, '').trim()}</span>
+          </div>
+        );
+        return;
+      }
+
+      // Key-value pairs (contains : with value)
+      const kvMatch = trimmedLine.match(/^([•\-📊📦💰📋🔹▸►]?\s*)([^:]+):\s*(.+)$/);
+      if (kvMatch && !trimmedLine.includes('http')) {
+        const [, bullet, key, value] = kvMatch;
+        const isMonetary = /₹|revenue|sale|profit|amount|payment|total/i.test(key);
+        elements.push(
+          <div key={currentKey++} className="flex justify-between items-center py-1.5 text-sm border-b border-border/50 last:border-0">
+            <span className="text-muted-foreground">{bullet}{key}</span>
+            <span className={`font-medium ${isMonetary ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+              {value}
+            </span>
+          </div>
+        );
+        return;
+      }
+
+      // Bullet points (starts with •, -, ▸, or numbers)
+      if (/^[•\-▸►]\s/.test(trimmedLine) || /^\d+\.\s/.test(trimmedLine)) {
+        elements.push(
+          <div key={currentKey++} className="flex items-start gap-2 text-sm py-0.5">
+            <span className="text-primary">•</span>
+            <span className="text-muted-foreground">{trimmedLine.replace(/^[•\-▸►\d.]\s*/, '')}</span>
+          </div>
+        );
+        return;
+      }
+
+      // Bold text (**text**)
+      if (trimmedLine.includes('**')) {
+        const parts = trimmedLine.split(/\*\*([^*]+)\*\*/g);
+        elements.push(
+          <p key={currentKey++} className="text-sm text-muted-foreground">
+            {parts.map((part, i) => 
+              i % 2 === 1 ? <strong key={i} className="text-foreground">{part}</strong> : part
+            )}
+          </p>
+        );
+        return;
+      }
+
+      // Default text
+      elements.push(
+        <p key={currentKey++} className="text-sm text-muted-foreground">
+          {trimmedLine}
+        </p>
+      );
+    });
+
+    return elements;
+  };
+
+  return <div className="space-y-1">{parseContent(content)}</div>;
+};
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -288,7 +391,7 @@ export const AIAssistant = () => {
                 key={message.id}
                 className={`flex gap-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex gap-2 max-w-[80%] ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex gap-2 max-w-[85%] ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className="flex-shrink-0">
                     {message.isUser ? (
                       <User className="h-6 w-6 text-primary" />
@@ -299,11 +402,15 @@ export const AIAssistant = () => {
                   <div
                     className={`p-3 rounded-lg ${
                       message.isUser
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
+                        ? 'bg-primary text-primary-foreground text-sm'
+                        : 'bg-muted border border-border'
                     }`}
                   >
-                    {message.content}
+                    {message.isUser ? (
+                      message.content
+                    ) : (
+                      <StructuredMessage content={message.content} />
+                    )}
                   </div>
                 </div>
               </div>
