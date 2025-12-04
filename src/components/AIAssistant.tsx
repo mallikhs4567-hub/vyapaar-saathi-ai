@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bot, User, HelpCircle, Loader2 } from 'lucide-react';
+import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -19,12 +20,13 @@ interface Message {
 
 export const AIAssistant = () => {
   const { t } = useLanguage();
+  const { session } = useAuth();
   const [searchParams] = useSearchParams();
   const businessType = searchParams.get('businessType') || 'general';
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: `Hello! I'm your AI business assistant for ${businessType} business. How can I help you today?`,
+      content: `🙏 Namaste! Main hoon VyapaarSaathiAI - aapka business assistant!\n\nMain aapke real data se connected hoon. Aap mujhse pooch sakte ho:\n\n📊 "Aaj ki sale kitni hai?"\n📦 "Low stock items batao"\n💰 "Is mahine ka profit?"\n📋 "Monthly overview do"\n\nKya jaanna chahte ho?`,
       isUser: false,
       timestamp: new Date(),
     },
@@ -32,30 +34,44 @@ export const AIAssistant = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Quick action queries for business data
+  const quickQueries = [
+    { label: "📊 Aaj ki Sale", query: "Aaj ki total sale kitni hai?" },
+    { label: "📦 Stock Status", query: "Mera inventory status batao, low stock items kaunse hain?" },
+    { label: "💰 Monthly Profit", query: "Is mahine ka profit kitna hua?" },
+    { label: "📋 Overview", query: "Mera complete business overview do" },
+  ];
+
   const businessFAQs = {
     grocery: [
-      "How to manage inventory for perishable items?",
-      "Best pricing strategies for local competition",
-      "How to reduce wastage in fruits and vegetables?",
-      "Setting up credit system for customers"
+      "Low stock items batao",
+      "Aaj ki sale kitni hai?",
+      "Top selling products kaunse hain?",
+      "Pending payments kitne hain?"
     ],
     barber: [
-      "How to manage appointment bookings?",
-      "What services should I offer?",
-      "How to build customer loyalty?",
-      "Setting competitive pricing for services"
+      "Aaj ki kamai kitni hai?",
+      "Is hafte ki total sale?",
+      "Top services kaunsi hain?",
+      "Monthly overview do"
     ],
     hotel: [
-      "How to manage room bookings?",
-      "Food cost management tips",
-      "How to handle customer complaints?",
-      "Marketing strategies for local customers"
+      "Aaj ka revenue kitna hai?",
+      "Pending bills kitne hain?",
+      "Is mahine ka profit?",
+      "Inventory status batao"
     ],
     clothing: [
-      "How to manage seasonal inventory?",
-      "Best display techniques for clothes?",
-      "How to handle returns and exchanges?",
-      "Trend forecasting for local market"
+      "Low stock items kaunse hain?",
+      "Top selling items batao",
+      "Is mahine ki sale kitni hai?",
+      "Pending payments check karo"
+    ],
+    general: [
+      "Aaj ki sale kitni hai?",
+      "Low stock items batao",
+      "Monthly overview do",
+      "Pending payments kitne hain?"
     ]
   };
 
@@ -146,6 +162,27 @@ export const AIAssistant = () => {
     return `I'm here to help you succeed in your ${businessType} business! I can provide specific advice on:\n\n💼 **Business Operations**: Day-to-day management, efficiency tips\n💰 **Financial Management**: Profit optimization, cost control\n📈 **Sales Growth**: Customer acquisition and retention strategies\n📦 **Inventory**: Stock management and procurement\n🎯 **Marketing**: Local advertising and customer engagement\n⚠️ **Problem Solving**: Specific challenges you're facing\n\nWhat would you like to focus on? The more specific your question, the better advice I can give you!`;
   };
 
+  const sendMessageToAI = async (messageText: string) => {
+    try {
+      // Get the current session token
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('ai-chatbot', {
+        body: { message: messageText, businessType },
+        headers: currentSession?.access_token ? {
+          Authorization: `Bearer ${currentSession.access_token}`
+        } : undefined
+      });
+
+      if (error) throw error;
+
+      return data.message || 'Sorry, I could not generate a response.';
+    } catch (error: any) {
+      console.error('Chatbot error:', error);
+      throw error;
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
@@ -162,21 +199,16 @@ export const AIAssistant = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chatbot', {
-        body: { message: currentQuery, businessType }
-      });
-
-      if (error) throw error;
-
+      const responseText = await sendMessageToAI(currentQuery);
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.message || 'Sorry, I could not generate a response.',
+        content: responseText,
         isUser: false,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
     } catch (error: any) {
-      console.error('Chatbot error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to get AI response",
@@ -187,12 +219,12 @@ export const AIAssistant = () => {
     }
   };
 
-  const handleFAQClick = async (faq: string) => {
+  const handleQuickQuery = async (query: string) => {
     if (isLoading) return;
     
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: faq,
+      content: query,
       isUser: true,
       timestamp: new Date(),
     };
@@ -201,21 +233,16 @@ export const AIAssistant = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chatbot', {
-        body: { message: faq, businessType }
-      });
-
-      if (error) throw error;
-
+      const responseText = await sendMessageToAI(query);
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.message || 'Sorry, I could not generate a response.',
+        content: responseText,
         isUser: false,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
     } catch (error: any) {
-      console.error('Chatbot error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to get AI response",
@@ -226,13 +253,32 @@ export const AIAssistant = () => {
     }
   };
 
+  const handleFAQClick = (faq: string) => {
+    handleQuickQuery(faq);
+  };
+
   return (
     <Card className="h-[600px] flex flex-col">
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
-          {t('chatbot')}
+          VyapaarSaathiAI
         </CardTitle>
+        {/* Quick Action Buttons */}
+        <div className="flex flex-wrap gap-2 mt-2">
+          {quickQueries.map((q, i) => (
+            <Button
+              key={i}
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickQuery(q.query)}
+              disabled={isLoading}
+              className="text-xs"
+            >
+              {q.label}
+            </Button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
         <ScrollArea className="flex-1 mb-4 p-4 border rounded-md">
