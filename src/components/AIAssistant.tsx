@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -138,6 +138,12 @@ export const AIAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Text-to-speech function
   const speakText = (text: string) => {
@@ -509,6 +515,20 @@ export const AIAssistant = () => {
                 </div>
               </div>
             ))}
+            {isLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex gap-2 max-w-[85%]">
+                  <Bot className="h-6 w-6 text-secondary-foreground flex-shrink-0" />
+                  <div className="p-3 rounded-lg bg-muted border border-border">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Thinking...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
         
