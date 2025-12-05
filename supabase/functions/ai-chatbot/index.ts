@@ -38,6 +38,22 @@ function detectQueryType(message: string): 'sale_add' | 'query' | 'overview' | '
   return 'chat';
 }
 
+// Fetch user profile from database
+async function fetchUserProfile(supabase: any, userId: string) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
+  
+  return profile;
+}
+
 // Fetch business data from database
 async function fetchBusinessData(supabase: any, userId: string) {
   const today = new Date().toISOString().split('T')[0];
@@ -159,6 +175,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     let userId = null;
     let businessData = null;
+    let userProfile = null;
 
     if (authHeader && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -169,6 +186,9 @@ serve(async (req) => {
       
       if (!authError && user) {
         userId = user.id;
+        
+        // Fetch user profile for personalization
+        userProfile = await fetchUserProfile(supabase, userId);
         
         // Detect query type and fetch data if needed
         const queryType = detectQueryType(message);
@@ -181,19 +201,39 @@ serve(async (req) => {
 
     // Build system prompt based on query type
     const queryType = detectQueryType(message);
-    let systemPrompt = `You are VyapaarSaathiAI — a fully database-connected business assistant for shop owners specializing in ${businessType} business.
+    
+    // Build user profile context
+    const userName = userProfile?.full_name || 'User';
+    const shopName = userProfile?.shop_name || 'Your Shop';
+    const shopCategory = userProfile?.shop_category || businessType || 'General';
+    const shopAddress = userProfile?.shop_address || '';
+    const shopPhone = userProfile?.shop_phone || '';
+    const shopEmail = userProfile?.shop_email || '';
+    
+    let systemPrompt = `You are VyapaarSaathiAI — a fully database-connected business assistant for shop owners.
+
+👤 USER PROFILE:
+- Owner Name: ${userName}
+- Shop Name: ${shopName}
+- Business Category: ${shopCategory}
+${shopAddress ? `- Address: ${shopAddress}` : ''}
+${shopPhone ? `- Contact: ${shopPhone}` : ''}
+${shopEmail ? `- Email: ${shopEmail}` : ''}
 
 Your personality:
 - Friendly, helpful, and professional
+- Address the user by their name (${userName.split(' ')[0]}) to make it personal
 - Speak in a mix of Hindi and English (Hinglish) when appropriate
 - Use emojis to make responses engaging
 - Keep answers concise but informative
+- Reference the shop name (${shopName}) when discussing their business
 
 CRITICAL RULES:
 - NEVER guess or fabricate data
 - ALWAYS use the real data provided in the context
 - Format numbers in Indian style (e.g., ₹1,00,000)
-- If data is unavailable, clearly state that`;
+- If data is unavailable, clearly state that
+- Provide advice tailored to ${shopCategory} business type`;
 
     let contextData = '';
     
