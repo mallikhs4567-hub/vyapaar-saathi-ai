@@ -162,8 +162,11 @@ export const AIAssistant = () => {
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
-      setInputValue(transcript);
       setIsListening(false);
+      if (transcript.trim()) {
+        // Auto-send after voice input
+        handleSendMessage(transcript);
+      }
     };
 
     recognition.onerror = (event: any) => {
@@ -334,18 +337,19 @@ export const AIAssistant = () => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSendMessage = async (voiceInput?: string) => {
+    const messageText = voiceInput || inputValue;
+    if (!messageText.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: messageText,
       isUser: true,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const currentQuery = inputValue;
+    const currentQuery = messageText;
     setInputValue('');
     setIsLoading(true);
 
@@ -503,7 +507,7 @@ export const AIAssistant = () => {
           >
             {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
-          <Button onClick={handleSendMessage} size="icon" disabled={isLoading || !inputValue.trim()}>
+          <Button onClick={() => handleSendMessage()} size="icon" disabled={isLoading || !inputValue.trim()}>
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
