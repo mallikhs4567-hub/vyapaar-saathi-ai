@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3, CheckCircle2, AlertTriangle, Info, Mic, MicOff } from 'lucide-react';
+import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3, CheckCircle2, AlertTriangle, Info, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 // Structured message renderer for AI responses
 const StructuredMessage = ({ content }: { content: string }) => {
@@ -137,6 +137,42 @@ export const AIAssistant = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Text-to-speech function
+  const speakText = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      return;
+    }
+
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Clean text for speech (remove emojis and special formatting)
+    const cleanText = text
+      .replace(/[📊📦💰📋✅❌⚠️🎯📈🔔💼🏪📱🎁⭐🙏]/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/[•\-▸►]/g, '')
+      .replace(/\n+/g, '. ')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'hi-IN'; // Hindi for Hinglish
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop speaking
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
 
   // Voice recognition setup
   const startVoiceInput = () => {
@@ -363,6 +399,9 @@ export const AIAssistant = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
+      
+      // Auto-speak AI response
+      speakText(responseText);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -397,6 +436,9 @@ export const AIAssistant = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiResponse]);
+      
+      // Auto-speak AI response
+      speakText(responseText);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -498,6 +540,16 @@ export const AIAssistant = () => {
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
             className={isListening ? "border-primary animate-pulse" : ""}
           />
+          {isSpeaking && (
+            <Button 
+              onClick={stopSpeaking} 
+              size="icon" 
+              variant="outline"
+              className="bg-primary/10 border-primary"
+            >
+              <VolumeX className="h-4 w-4 text-primary" />
+            </Button>
+          )}
           <Button 
             onClick={startVoiceInput} 
             size="icon" 
