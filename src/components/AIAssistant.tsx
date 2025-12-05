@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { Send, Bot, User, HelpCircle, Loader2, TrendingUp, Package, IndianRupee, BarChart3, CheckCircle2, AlertTriangle, Info, Mic, MicOff } from 'lucide-react';
 
 // Structured message renderer for AI responses
 const StructuredMessage = ({ content }: { content: string }) => {
@@ -136,6 +136,54 @@ export const AIAssistant = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  // Voice recognition setup
+  const startVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      toast({
+        title: "Voice not supported",
+        description: "Your browser doesn't support voice input. Try Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'hi-IN'; // Hindi-India for Hinglish support
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInputValue(transcript);
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+        toast({
+          title: "Microphone blocked",
+          description: "Please allow microphone access to use voice input.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   // Quick action queries for business data
   const quickQueries = [
@@ -440,12 +488,22 @@ export const AIAssistant = () => {
         
         <div className="flex gap-2">
           <Input
-            placeholder={t('helpPlaceholder')}
+            placeholder={isListening ? "🎤 Listening..." : t('helpPlaceholder')}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            className={isListening ? "border-primary animate-pulse" : ""}
           />
-          <Button onClick={handleSendMessage} size="icon" disabled={isLoading}>
+          <Button 
+            onClick={startVoiceInput} 
+            size="icon" 
+            variant={isListening ? "default" : "outline"}
+            disabled={isLoading}
+            className={isListening ? "bg-red-500 hover:bg-red-600" : ""}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </Button>
+          <Button onClick={handleSendMessage} size="icon" disabled={isLoading || !inputValue.trim()}>
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
