@@ -2,3 +2,15 @@ project_id = "wlmhhlffetqqioondtre"
 
 [functions.publish-to-platform]
 verify_jwt = true
+
+[functions.generate-social-post]
+verify_jwt = true
+
+[functions.generate-qr-content]
+verify_jwt = true
+
+[functions.ai-chatbot]
+verify_jwt = true
+
+[functions.generate-insights]
+verify_jwt = true
