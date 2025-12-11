@@ -11,7 +11,6 @@ import { SalesManagement } from '@/components/SalesManagement';
 import { InventoryManagement } from '@/components/InventoryManagement';
 import { FinanceTracking } from '@/components/FinanceTracking';
 import { PromotionTools } from '@/components/PromotionTools';
-import { BillingManagement } from '@/components/BillingManagement';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { GreetingMessage } from '@/components/GreetingMessage';
 import { BottomNavigation } from '@/components/BottomNavigation';
@@ -311,13 +310,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Billing Content */}
-        {activeTab === 'billing' && (
-          <div className="space-y-4 animate-fade-in">
-            <AIInsights section="sales" />
-            <BillingManagement />
-          </div>
-        )}
 
         {/* Inventory Content */}
         {activeTab === 'inventory' && (
@@ -343,10 +335,10 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Floating Billing Button */}
+      {/* Floating Add Sale Button */}
       {activeTab === 'dashboard' && (
         <Button
-          onClick={() => setActiveTab('billing')}
+          onClick={() => setActiveTab('sales')}
           className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-20"
           size="icon"
         >
