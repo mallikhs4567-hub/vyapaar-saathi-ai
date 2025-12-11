@@ -1,4 +1,4 @@
-import { Home, DollarSign, Package, Wallet, Share2, TrendingUp } from 'lucide-react';
+import { Home, TrendingUp, Package, Wallet, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavigationProps {
@@ -17,12 +17,6 @@ const navItems = [
     id: 'sales', 
     icon: TrendingUp, 
     label: 'Sales',
-    color: 'text-success'
-  },
-  { 
-    id: 'billing', 
-    icon: DollarSign, 
-    label: 'Bills',
     color: 'text-success'
   },
   { 
