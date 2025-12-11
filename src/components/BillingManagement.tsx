@@ -197,6 +197,7 @@ export const BillingManagement = () => {
     };
 
     let billId = editingBill?.id;
+    const isNewBill = !editingBill;
 
     if (editingBill) {
       const { error } = await supabase
@@ -224,16 +225,16 @@ export const BillingManagement = () => {
       billId = data.id;
     }
 
-    const itemsData = items
-      .filter(item => item.product_name.trim() !== '')
-      .map(item => ({
-        bill_id: billId,
-        product_name: item.product_name,
-        description: item.description || null,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-      }));
+    const validItems = items.filter(item => item.product_name.trim() !== '');
+    
+    const itemsData = validItems.map(item => ({
+      bill_id: billId,
+      product_name: item.product_name,
+      description: item.description || null,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+    }));
 
     if (itemsData.length > 0) {
       const { error: itemsError } = await supabase
@@ -246,7 +247,28 @@ export const BillingManagement = () => {
       }
     }
 
-    toast.success(editingBill ? 'Bill updated successfully' : 'Bill created successfully');
+    // Auto-add to Sales table for new bills only
+    if (isNewBill && validItems.length > 0) {
+      const salesData = validItems.map(item => ({
+        User_id: user.id,
+        Product: item.product_name,
+        Customer_name: customerName,
+        Amount: item.total_price,
+        Quantity: item.quantity,
+        Date: billDate,
+      }));
+
+      const { error: salesError } = await supabase
+        .from('Sales')
+        .insert(salesData);
+
+      if (salesError) {
+        console.error('Failed to add sales records:', salesError);
+        // Don't show error to user as bill was created successfully
+      }
+    }
+
+    toast.success(editingBill ? 'Bill updated successfully' : 'Bill created & added to Sales!');
     setIsDialogOpen(false);
     resetForm();
     fetchBills();
