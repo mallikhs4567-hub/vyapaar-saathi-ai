@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
@@ -8,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, TrendingUp, Calendar, Edit, Trash2, Loader2, Activity, FileText, Download, Store } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, TrendingUp, Calendar, Edit, Trash2, Loader2, Activity, FileText, Download, X, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -24,6 +24,14 @@ interface Sale {
   paymentMethod: 'cash' | 'upi' | 'card';
 }
 
+interface BillItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 interface ShopProfile {
   shop_name: string;
   shop_address: string;
@@ -33,31 +41,36 @@ interface ShopProfile {
 }
 
 export const SalesManagement = () => {
-  const { t } = useLanguage();
   const { user } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopProfile, setShopProfile] = useState<ShopProfile | null>(null);
   const [viewingBill, setViewingBill] = useState<Sale | null>(null);
   const [isBillDialogOpen, setIsBillDialogOpen] = useState(false);
-
-  const [newSale, setNewSale] = useState<{
-    customerName: string;
-    amount: string;
-    items: string;
-    quantity: string;
-    paymentMethod: 'cash' | 'upi' | 'card';
-  }>({
-    customerName: '',
-    amount: '',
-    items: '',
-    quantity: '1',
-    paymentMethod: 'cash'
-  });
-
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+
+  // Bill form state
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [billItems, setBillItems] = useState<BillItem[]>([
+    { id: '1', name: '', quantity: 1, unitPrice: 0, total: 0 }
+  ]);
+  const [taxPercentage, setTaxPercentage] = useState(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card'>('cash');
+  const [notes, setNotes] = useState('');
+  const [paidAmount, setPaidAmount] = useState(0);
+
+  // Edit form state (simple)
+  const [editForm, setEditForm] = useState({
+    customerName: '',
+    amount: '',
+    items: '',
+    quantity: '1'
+  });
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -90,7 +103,7 @@ export const SalesManagement = () => {
         id: sale.id,
         customerName: sale.Customer_name || '',
         amount: Number(sale.Amount) || 0,
-        items: sale.Product ? [sale.Product] : [],
+        items: sale.Product ? sale.Product.split(', ') : [],
         date: sale.Date ? new Date(sale.Date) : new Date(),
         quantity: Number(sale.Quantity) || 1,
         paymentMethod: 'cash' as const
@@ -118,33 +131,94 @@ export const SalesManagement = () => {
     enableCreditSaver: true,
   });
 
+  // Calculate totals
+  const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
+  const taxAmount = (subtotal * taxPercentage) / 100;
+  const discountAmount = discountType === 'percentage' 
+    ? (subtotal * discountValue) / 100 
+    : discountValue;
+  const grandTotal = subtotal + taxAmount - discountAmount;
+
   const generateBillNumber = (saleId: string) => {
     return `INV-${saleId.slice(-6).toUpperCase()}`;
   };
 
+  const resetForm = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setBillItems([{ id: '1', name: '', quantity: 1, unitPrice: 0, total: 0 }]);
+    setTaxPercentage(0);
+    setDiscountType('amount');
+    setDiscountValue(0);
+    setPaymentMethod('cash');
+    setNotes('');
+    setPaidAmount(0);
+  };
+
+  const handleItemChange = (id: string, field: keyof BillItem, value: string | number) => {
+    setBillItems(items => items.map(item => {
+      if (item.id !== id) return item;
+      
+      const updated = { ...item, [field]: value };
+      if (field === 'quantity' || field === 'unitPrice') {
+        updated.total = updated.quantity * updated.unitPrice;
+      }
+      return updated;
+    }));
+  };
+
+  const addItem = () => {
+    setBillItems([...billItems, { 
+      id: Date.now().toString(), 
+      name: '', 
+      quantity: 1, 
+      unitPrice: 0, 
+      total: 0 
+    }]);
+  };
+
+  const removeItem = (id: string) => {
+    if (billItems.length > 1) {
+      setBillItems(billItems.filter(item => item.id !== id));
+    }
+  };
+
   const handleAddSale = async () => {
-    if (!user || !newSale.customerName || !newSale.amount) {
-      toast.error('Please fill in customer name and amount');
+    if (!user) return;
+
+    // Validation
+    if (!customerName.trim()) {
+      toast.error('Please enter customer name');
+      return;
+    }
+
+    const validItems = billItems.filter(item => item.name.trim() && item.total > 0);
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item');
       return;
     }
 
     try {
+      // Create product string from items
+      const productString = validItems.map(item => item.name).join(', ');
+      const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
+
       const { error } = await supabase
         .from('Sales')
         .insert({
           User_id: user.id,
-          Customer_name: newSale.customerName,
-          Amount: parseFloat(newSale.amount),
-          Product: newSale.items,
+          Customer_name: customerName.trim(),
+          Amount: grandTotal,
+          Product: productString,
           Date: new Date().toISOString().split('T')[0],
-          Quantity: parseInt(newSale.quantity) || 1
+          Quantity: totalQuantity
         });
 
       if (error) throw error;
 
-      setNewSale({ customerName: '', amount: '', items: '', quantity: '1', paymentMethod: 'cash' });
+      resetForm();
       setIsAddDialogOpen(false);
-      toast.success(`₹${newSale.amount} sale added successfully`);
+      toast.success('Sale recorded successfully!');
       await fetchSales();
     } catch (error) {
       toast.error('Failed to add sale');
@@ -153,18 +227,19 @@ export const SalesManagement = () => {
 
   const handleEditSale = (sale: Sale) => {
     setEditingSale(sale);
-    setNewSale({
+    setEditForm({
       customerName: sale.customerName,
       amount: sale.amount.toString(),
       items: sale.items.join(', '),
-      quantity: sale.quantity.toString(),
-      paymentMethod: sale.paymentMethod
+      quantity: sale.quantity.toString()
     });
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateSale = async () => {
-    if (!user || !editingSale || !newSale.customerName || !newSale.amount) {
+    if (!user || !editingSale) return;
+
+    if (!editForm.customerName.trim() || !editForm.amount) {
       toast.error('Please fill in customer name and amount');
       return;
     }
@@ -173,17 +248,16 @@ export const SalesManagement = () => {
       const { error } = await supabase
         .from('Sales')
         .update({
-          Customer_name: newSale.customerName,
-          Amount: parseFloat(newSale.amount),
-          Product: newSale.items,
-          Quantity: parseInt(newSale.quantity) || 1
+          Customer_name: editForm.customerName.trim(),
+          Amount: parseFloat(editForm.amount),
+          Product: editForm.items,
+          Quantity: parseInt(editForm.quantity) || 1
         })
         .eq('id', editingSale.id)
         .eq('User_id', user.id);
 
       if (error) throw error;
 
-      setNewSale({ customerName: '', amount: '', items: '', quantity: '1', paymentMethod: 'cash' });
       setIsEditDialogOpen(false);
       setEditingSale(null);
       toast.success('Sale updated successfully');
@@ -258,12 +332,14 @@ export const SalesManagement = () => {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${sale.items.join(', ') || 'Service'}</td>
-            <td style="padding: 8px; text-align: center; border-bottom: 1px solid #E2E8F0;">${sale.quantity}</td>
-            <td style="padding: 8px; text-align: right; border-bottom: 1px solid #E2E8F0;">₹${unitPrice.toFixed(2)}</td>
-            <td style="padding: 8px; text-align: right; border-bottom: 1px solid #E2E8F0;">₹${sale.amount.toFixed(2)}</td>
-          </tr>
+          ${sale.items.map(item => `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${item || 'Service'}</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #E2E8F0;">${sale.quantity}</td>
+              <td style="padding: 8px; text-align: right; border-bottom: 1px solid #E2E8F0;">₹${unitPrice.toFixed(2)}</td>
+              <td style="padding: 8px; text-align: right; border-bottom: 1px solid #E2E8F0;">₹${sale.amount.toFixed(2)}</td>
+            </tr>
+          `).join('')}
         </tbody>
       </table>
 
@@ -343,67 +419,187 @@ export const SalesManagement = () => {
             </Badge>
           )}
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />
-              Add Sale
+              New Bill
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Record New Sale</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Create Bill
+              </DialogTitle>
             </DialogHeader>
+            
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="customerName">Customer Name</Label>
-                <Input
-                  id="customerName"
-                  value={newSale.customerName}
-                  onChange={(e) => setNewSale(prev => ({ ...prev, customerName: e.target.value }))}
-                  placeholder="Enter customer name"
-                />
+              {/* Customer Details */}
+              <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-sm font-semibold">Customer Details</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="customerName" className="text-xs">Name *</Label>
+                    <Input
+                      id="customerName"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Customer name"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customerPhone" className="text-xs">Phone</Label>
+                    <Input
+                      id="customerPhone"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Optional"
+                      maxLength={15}
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Items */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Items</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {billItems.map((item, index) => (
+                    <div key={item.id} className="grid grid-cols-12 gap-2 items-end p-2 bg-muted/30 rounded-lg">
+                      <div className="col-span-5">
+                        {index === 0 && <Label className="text-[10px] text-muted-foreground">Item Name</Label>}
+                        <Input
+                          value={item.name}
+                          onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
+                          placeholder="Item name"
+                          className="h-9 text-sm"
+                          maxLength={100}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        {index === 0 && <Label className="text-[10px] text-muted-foreground">Qty</Label>}
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        {index === 0 && <Label className="text-[10px] text-muted-foreground">Price</Label>}
+                        <Input
+                          type="number"
+                          min="0"
+                          value={item.unitPrice || ''}
+                          onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="₹0"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2 flex items-center gap-1">
+                        <span className="text-sm font-medium">₹{item.total}</span>
+                        {billItems.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tax & Discount */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="amount">Amount (₹)</Label>
+                  <Label className="text-xs">Tax %</Label>
                   <Input
-                    id="amount"
                     type="number"
-                    value={newSale.amount}
-                    onChange={(e) => setNewSale(prev => ({ ...prev, amount: e.target.value }))}
+                    min="0"
+                    max="100"
+                    value={taxPercentage || ''}
+                    onChange={(e) => setTaxPercentage(parseFloat(e.target.value) || 0)}
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={newSale.quantity}
-                    onChange={(e) => setNewSale(prev => ({ ...prev, quantity: e.target.value }))}
-                    placeholder="1"
-                  />
+                  <Label className="text-xs">Discount</Label>
+                  <div className="flex gap-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={discountValue || ''}
+                      onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="flex-1"
+                    />
+                    <Select value={discountType} onValueChange={(v) => setDiscountType(v as 'amount' | 'percentage')}>
+                      <SelectTrigger className="w-16">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="amount">₹</SelectItem>
+                        <SelectItem value="percentage">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="items">Item/Service</Label>
-                <Input
-                  id="items"
-                  value={newSale.items}
-                  onChange={(e) => setNewSale(prev => ({ ...prev, items: e.target.value }))}
-                  placeholder="Product or service name"
-                />
+
+              {/* Totals */}
+              <div className="bg-primary/5 p-3 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
+                </div>
+                {taxAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax ({taxPercentage}%)</span>
+                    <span>₹{taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Discount</span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                  <span>Total</span>
+                  <span className="text-primary">₹{grandTotal.toFixed(2)}</span>
+                </div>
               </div>
+
+              {/* Payment Method */}
               <div>
-                <Label>Payment Method</Label>
+                <Label className="text-xs">Payment Method</Label>
                 <div className="flex gap-2 mt-2">
                   {(['cash', 'upi', 'card'] as const).map((method) => (
                     <Button
                       key={method}
-                      variant={newSale.paymentMethod === method ? 'default' : 'outline'}
+                      type="button"
+                      variant={paymentMethod === method ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setNewSale(prev => ({ ...prev, paymentMethod: method }))}
+                      onClick={() => setPaymentMethod(method)}
                       className="flex-1"
                     >
                       {method.toUpperCase()}
@@ -411,8 +607,22 @@ export const SalesManagement = () => {
                   ))}
                 </div>
               </div>
-              <Button onClick={handleAddSale} className="w-full">
-                Record Sale
+
+              {/* Notes */}
+              <div>
+                <Label className="text-xs">Notes (Optional)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any additional notes..."
+                  className="h-16 resize-none"
+                  maxLength={500}
+                />
+              </div>
+
+              <Button onClick={handleAddSale} className="w-full" disabled={grandTotal <= 0}>
+                <IndianRupee className="h-4 w-4 mr-1" />
+                Create Bill - ₹{grandTotal.toFixed(2)}
               </Button>
             </div>
           </DialogContent>
@@ -430,8 +640,8 @@ export const SalesManagement = () => {
               <Label htmlFor="editCustomerName">Customer Name</Label>
               <Input
                 id="editCustomerName"
-                value={newSale.customerName}
-                onChange={(e) => setNewSale(prev => ({ ...prev, customerName: e.target.value }))}
+                value={editForm.customerName}
+                onChange={(e) => setEditForm(prev => ({ ...prev, customerName: e.target.value }))}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -440,8 +650,8 @@ export const SalesManagement = () => {
                 <Input
                   id="editAmount"
                   type="number"
-                  value={newSale.amount}
-                  onChange={(e) => setNewSale(prev => ({ ...prev, amount: e.target.value }))}
+                  value={editForm.amount}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))}
                 />
               </div>
               <div>
@@ -449,8 +659,8 @@ export const SalesManagement = () => {
                 <Input
                   id="editQuantity"
                   type="number"
-                  value={newSale.quantity}
-                  onChange={(e) => setNewSale(prev => ({ ...prev, quantity: e.target.value }))}
+                  value={editForm.quantity}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, quantity: e.target.value }))}
                 />
               </div>
             </div>
@@ -458,8 +668,8 @@ export const SalesManagement = () => {
               <Label htmlFor="editItems">Item/Service</Label>
               <Input
                 id="editItems"
-                value={newSale.items}
-                onChange={(e) => setNewSale(prev => ({ ...prev, items: e.target.value }))}
+                value={editForm.items}
+                onChange={(e) => setEditForm(prev => ({ ...prev, items: e.target.value }))}
               />
             </div>
             <Button onClick={handleUpdateSale} className="w-full">
@@ -480,7 +690,6 @@ export const SalesManagement = () => {
           </DialogHeader>
           {viewingBill && (
             <div className="space-y-4">
-              {/* Shop Header */}
               {shopProfile?.shop_name && (
                 <div className="text-center pb-3 border-b border-primary">
                   <h3 className="font-bold text-lg">{shopProfile.shop_name}</h3>
@@ -495,12 +704,10 @@ export const SalesManagement = () => {
                 </div>
               )}
 
-              {/* Bill Number */}
               <div className="text-center">
                 <Badge variant="outline">#{generateBillNumber(viewingBill.id)}</Badge>
               </div>
 
-              {/* Customer Info */}
               <div className="bg-muted/50 p-3 rounded-lg">
                 <p className="text-xs text-muted-foreground">Customer</p>
                 <p className="font-semibold">{viewingBill.customerName}</p>
@@ -513,21 +720,21 @@ export const SalesManagement = () => {
                 </p>
               </div>
 
-              {/* Items */}
               <div className="border rounded-lg overflow-hidden">
                 <div className="grid grid-cols-4 gap-2 p-2 bg-muted text-xs font-medium">
                   <span className="col-span-2">Item</span>
                   <span className="text-center">Qty</span>
                   <span className="text-right">Total</span>
                 </div>
-                <div className="grid grid-cols-4 gap-2 p-2 text-sm">
-                  <span className="col-span-2">{viewingBill.items.join(', ') || 'Service'}</span>
-                  <span className="text-center">{viewingBill.quantity}</span>
-                  <span className="text-right font-medium">₹{viewingBill.amount}</span>
-                </div>
+                {viewingBill.items.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-4 gap-2 p-2 text-sm border-t">
+                    <span className="col-span-2">{item || 'Service'}</span>
+                    <span className="text-center">{viewingBill.quantity}</span>
+                    <span className="text-right font-medium">₹{viewingBill.amount}</span>
+                  </div>
+                ))}
               </div>
 
-              {/* Total */}
               <div className="flex justify-between items-center pt-2 border-t-2 border-primary">
                 <span className="font-semibold">Total</span>
                 <span className="text-xl font-bold text-primary">₹{viewingBill.amount}</span>
@@ -537,7 +744,6 @@ export const SalesManagement = () => {
                 <span>✓ Paid via {viewingBill.paymentMethod.toUpperCase()}</span>
               </div>
 
-              {/* Download Button */}
               <Button onClick={() => downloadBill(viewingBill)} className="w-full">
                 <Download className="h-4 w-4 mr-2" />
                 Download Bill
@@ -547,11 +753,11 @@ export const SalesManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Sales List - Mobile Optimized */}
+      {/* Sales List */}
       <div className="space-y-2">
         {sales.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground">No sales yet. Add your first sale!</p>
+            <p className="text-muted-foreground">No sales yet. Create your first bill!</p>
           </Card>
         ) : (
           sales.map((sale) => (
@@ -572,7 +778,7 @@ export const SalesManagement = () => {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-lg font-bold text-primary">₹{sale.amount}</span>
+                      <span className="text-lg font-bold text-primary">₹{sale.amount.toLocaleString()}</span>
                       {sale.items.length > 0 && sale.items[0] && (
                         <Badge variant="secondary" className="text-[10px]">
                           {sale.items[0]}
@@ -581,8 +787,7 @@ export const SalesManagement = () => {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {sale.date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                      {' • '}
-                      Qty: {sale.quantity}
+                      {sale.quantity > 1 && ` • Qty: ${sale.quantity}`}
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">
