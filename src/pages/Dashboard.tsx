@@ -182,7 +182,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24">
+    <div ref={containerRef} className="min-h-screen bg-background pb-28">
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-3">
@@ -347,7 +347,7 @@ export default function Dashboard() {
       {activeTab === 'dashboard' && (
         <Button
           onClick={() => setActiveTab('billing')}
-          className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-20"
+          className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-20"
           size="icon"
         >
           <Plus className="h-6 w-6" />

@@ -94,6 +94,46 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Safe area padding utilities */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Touch target utility - minimum 48px for Android */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Touch feedback - ripple effect */
+  .touch-feedback {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .touch-feedback::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+    pointer-events: none;
+  }
+  
+  .touch-feedback:active::after {
+    opacity: 0.1;
+  }
+
   @keyframes page-slide-in {
     from {
       opacity: 0;
@@ -127,8 +167,17 @@ All colors MUST be HSL.
     }
   }
 
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
   .animate-page-slide-in {
     animation: page-slide-in 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
   }
 }
 

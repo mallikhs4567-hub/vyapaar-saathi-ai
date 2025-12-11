@@ -17,6 +17,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Vyapaar Saathi">
     
+    <!-- Android Chrome Settings -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="HandheldFriendly" content="true">
+    
     <!-- Theme Colors -->
     <meta name="theme-color" content="#1E3A8A" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#2563EB" media="(prefers-color-scheme: dark)">
@@ -41,6 +45,32 @@
     <meta name="twitter:title" content="Vyapaar Saathi AI">
     <meta name="twitter:description" content="Your AI-powered business growth partner">
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/s4L43PT2PJOTEg4Sg1kpj7mYEQF2/social-images/social-1759675450453-unnamed (1).png">
+
+    <!-- Android Safe Area & Touch Optimization -->
+    <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sar: env(safe-area-inset-right);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+      }
+      
+      /* Prevent tap highlight on Android */
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Smooth scrolling on Android */
+      html {
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Prevent pull-to-refresh on Android Chrome */
+      body {
+        overscroll-behavior-y: contain;
+      }
+    </style>
 </head>
 
   <body>
