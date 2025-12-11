@@ -13,19 +13,21 @@ interface DashboardCardProps {
 export const DashboardCard = ({ title, value, icon: Icon, trend, trendUp, onClick }: DashboardCardProps) => {
   return (
     <Card 
-      className={`hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+      className={`transition-all duration-150 touch-feedback select-none ${onClick ? 'cursor-pointer hover:bg-muted/50 active:scale-[0.98] active:bg-muted/70' : ''}`}
       onClick={onClick}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
-        <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground leading-tight">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+        <CardTitle className="text-xs font-medium text-muted-foreground leading-tight">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
       </CardHeader>
-      <CardContent className="p-3 md:p-6 pt-0">
-        <div className="text-lg md:text-2xl font-bold text-foreground break-all">{value}</div>
+      <CardContent className="p-4 pt-0">
+        <div className="text-xl font-bold text-foreground break-all">{value}</div>
         {trend && (
-          <p className={`text-[10px] md:text-xs ${trendUp ? 'text-green-600' : 'text-red-600'} mt-1 leading-tight`}>
+          <p className={`text-[11px] ${trendUp ? 'text-success' : 'text-destructive'} mt-1 leading-tight font-medium`}>
             {trend}
           </p>
         )}
